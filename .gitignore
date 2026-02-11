@@ -23,13 +23,16 @@ venv/
 # Data & artifacts
 # =========================
 data/
-**/data/
+models/
+*.pkl
+*.joblib
 
+# =========================
 # MLflow
+# =========================
 mlruns/
-**/mlruns/
+mlflow.db
 experiments_*/
-**/experiments_*/
 
 # =========================
 # Logs
