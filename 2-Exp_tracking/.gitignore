@@ -11,4 +11,5 @@ models*/
 # =========================
 mlruns*/
 experiments_*/
-mlflow.db
+*.db
+
