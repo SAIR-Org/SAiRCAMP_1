@@ -1,0 +1,124 @@
+version: '3.8'
+
+services:
+  # Prefect Server (orchestration engine)
+  prefect-server:
+    image: prefecthq/prefect:2-latest
+    container_name: prefect-server
+    command: prefect server start --host 0.0.0.0
+    ports:
+      - "4200:4200"
+    environment:
+      - PREFECT_SERVER_API_HOST=0.0.0.0
+      - PREFECT_API_DATABASE_CONNECTION_URL=postgresql+asyncpg://prefect:prefect@postgres:5432/prefect
+    volumes:
+      - prefect-data:/root/.prefect
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - prefect-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4200/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # PostgreSQL Database (for Prefect metadata)
+  postgres:
+    image: postgres:15-alpine
+    container_name: prefect-postgres
+    environment:
+      - POSTGRES_USER=prefect
+      - POSTGRES_PASSWORD=prefect
+      - POSTGRES_DB=prefect
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - prefect-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U prefect"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Prefect Agent (executes flows)
+  prefect-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: prefect-agent
+    command: prefect agent start --pool default-agent-pool
+    environment:
+      - PREFECT_API_URL=http://prefect-server:4200/api
+      - MLFLOW_TRACKING_URI=sqlite:///mlflow_nyc_taxi.db
+      - KAGGLE_USERNAME=${KAGGLE_USERNAME}
+      - KAGGLE_KEY=${KAGGLE_KEY}
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./mlflow_nyc_taxi.db:/app/mlflow_nyc_taxi.db
+      - ~/.kaggle:/root/.kaggle:ro
+    depends_on:
+      prefect-server:
+        condition: service_healthy
+    networks:
+      - prefect-network
+    restart: unless-stopped
+
+  # MLflow UI (optional - for experiment tracking visualization)
+  mlflow-ui:
+    image: python:3.10-slim
+    container_name: mlflow-ui
+    command: >
+      bash -c "pip install mlflow && 
+               mlflow ui --backend-store-uri sqlite:///mlflow_nyc_taxi.db 
+               --host 0.0.0.0 --port 5000"
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlflow_nyc_taxi.db:/mlflow_nyc_taxi.db
+    networks:
+      - prefect-network
+    restart: unless-stopped
+
+  # Jupyter Lab (optional - for development)
+  jupyter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: jupyter-lab
+    command: >
+      bash -c "pip install jupyterlab && 
+               jupyter lab --ip=0.0.0.0 --port=8888 
+               --no-browser --allow-root 
+               --NotebookApp.token='' --NotebookApp.password=''"
+    ports:
+      - "8888:8888"
+    environment:
+      - PREFECT_API_URL=http://prefect-server:4200/api
+      - MLFLOW_TRACKING_URI=sqlite:///mlflow_nyc_taxi.db
+    volumes:
+      - .:/app
+      - ./models:/app/models
+      - ./data:/app/data
+      - ./logs:/app/logs
+    networks:
+      - prefect-network
+    restart: unless-stopped
+
+volumes:
+  prefect-data:
+    driver: local
+  postgres-data:
+    driver: local
+
+networks:
+  prefect-network:
+    driver: bridge

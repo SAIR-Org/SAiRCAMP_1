@@ -1,0 +1,98 @@
+# Prefect Deployment Configuration
+# This file defines how to deploy the NYC Taxi ML Pipeline
+
+# Pull step - how to get your code
+pull:
+  - prefect.deployments.steps.git_clone:
+      repository: https://github.com/your-org/nyc-taxi-mlops.git
+      branch: main
+
+# Alternative: local file system (for development)
+# pull:
+#   - prefect.deployments.steps.set_working_directory:
+#       directory: /path/to/nyc-taxi-mlops
+
+# Build step - prepare the environment
+build:
+  - prefect_docker.deployments.steps.build_docker_image:
+      id: build-image
+      requires: prefect-docker>=0.3.0
+      image_name: nyc-taxi-ml-pipeline
+      tag: latest
+      dockerfile: Dockerfile
+      push: false
+
+# Push step - where to store the built artifacts
+push:
+  - prefect_docker.deployments.steps.push_docker_image:
+      requires: prefect-docker>=0.3.0
+      image_name: "{{ build-image.image_name }}"
+      tag: "{{ build-image.tag }}"
+
+# Deployments - different ways to run your pipeline
+deployments:
+  # Production deployment - full training with all data
+  - name: production-training
+    version: 1.0.0
+    tags:
+      - production
+      - full-training
+    description: Full production training with complete dataset
+    entrypoint: flows/nyc_taxi_flow.py:nyc_taxi_ml_pipeline
+    parameters:
+      sample_size: null
+      skip_tuning: false
+      skip_cv: false
+    work_pool:
+      name: default-agent-pool
+      work_queue_name: default
+    schedule:
+      cron: "0 2 * * 0"  # Every Sunday at 2 AM
+      timezone: "America/New_York"
+      day_or: true
+    
+  # Development deployment - fast iteration
+  - name: development-testing
+    version: 1.0.0
+    tags:
+      - development
+      - testing
+    description: Fast development testing with small sample
+    entrypoint: flows/nyc_taxi_flow.py:nyc_taxi_ml_pipeline
+    parameters:
+      sample_size: 10000
+      skip_tuning: true
+      skip_cv: true
+      models: ["Linear Regression", "Random Forest"]
+    work_pool:
+      name: default-agent-pool
+      work_queue_name: default
+    
+  # Weekly retrain - automated retraining
+  - name: weekly-retrain
+    version: 1.0.0
+    tags:
+      - production
+      - scheduled
+      - retraining
+    description: Weekly automated model retraining
+    entrypoint: flows/nyc_taxi_flow.py:weekly_retrain_flow
+    work_pool:
+      name: default-agent-pool
+      work_queue_name: default
+    schedule:
+      cron: "0 3 * * 1"  # Every Monday at 3 AM
+      timezone: "America/New_York"
+      day_or: true
+  
+  # Fast validation - quick pipeline check
+  - name: fast-validation
+    version: 1.0.0
+    tags:
+      - validation
+      - testing
+    description: Quick validation for CI/CD
+    entrypoint: flows/nyc_taxi_flow.py:fast_validation_flow
+    work_pool:
+      name: default-agent-pool
+      work_queue_name: default
