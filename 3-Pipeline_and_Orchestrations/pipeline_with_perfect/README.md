@@ -9,10 +9,12 @@ A production-grade machine learning pipeline for predicting NYC Yellow Taxi trip
 - [Project Structure](#project-structure)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
+- [Command-Line Usage](#command-line-usage)
 - [Pipeline Stages](#pipeline-stages)
 - [Configuration](#configuration)
 - [MLflow Integration](#mlflow-integration)
 - [Advanced Usage](#advanced-usage)
+- [Production Patterns](#production-patterns)
 
 ## ✨ Features
 
@@ -20,6 +22,7 @@ A production-grade machine learning pipeline for predicting NYC Yellow Taxi trip
 - ✅ **Zero Data Leakage**: Strict separation of training/validation/test sets
 - ✅ **Prefect Orchestration**: Modular, resumable, and monitorable workflow
 - ✅ **MLflow Tracking**: Complete experiment tracking and model registry
+- ✅ **Command-Line Parameterization**: Run with different configs (like Prefect's pattern)
 - ✅ **Production Ready**: Clean, modular, and well-documented code
 - ✅ **Fast Training**: Optimized with HalvingRandomSearchCV
 
@@ -69,26 +72,34 @@ A production-grade machine learning pipeline for predicting NYC Yellow Taxi trip
 ```
 nyc_taxi_ml_pipeline/
 │
-├── main.py                  # Main Prefect flow (run this!)
-├── requirements.txt         # Python dependencies
-├── README.md               # This file
+├── main.py                      # Main Prefect flow with CLI args
+├── main_advanced.py             # Advanced version (year/month params)
+├── validate_setup.py            # Setup validation script
+├── requirements.txt             # Python dependencies
+│
+├── README.md                    # This file
+├── QUICKSTART.md               # 5-minute quick start guide
+├── ARCHITECTURE.md             # Architecture documentation
+├── PARAMETERIZATION_GUIDE.md   # CLI parameterization guide
+├── PROJECT_SUMMARY.md          # Project overview
+├── QUICKFIX.md                 # Common fixes
 │
 ├── config/
-│   └── config.py           # Centralized configuration
+│   └── config.py               # Centralized configuration
 │
 ├── src/
-│   ├── data_loader.py      # Data loading from Kaggle
+│   ├── data_loader.py          # Data loading from Kaggle
 │   ├── data_preprocessing.py   # Cleaning and splitting
 │   ├── feature_engineering.py  # Custom transformers
-│   ├── training.py         # Model training logic
-│   ├── evaluation.py       # Model evaluation
-│   ├── tuning.py          # Hyperparameter tuning
-│   └── registry.py        # MLflow registry operations
+│   ├── training.py             # Model training logic
+│   ├── evaluation.py           # Model evaluation
+│   ├── tuning.py              # Hyperparameter tuning
+│   └── registry.py            # MLflow registry operations
 │
-├── data/                   # Data directory (created automatically)
-├── models/                 # Model artifacts (created automatically)
-├── logs/                   # Log files (created automatically)
-└── mlflow_nyc_taxi.db     # MLflow SQLite database (created automatically)
+├── data/                       # Data directory (created automatically)
+├── models/                     # Model artifacts (created automatically)
+├── logs/                       # Log files (created automatically)
+└── mlflow_nyc_taxi.db         # MLflow SQLite database (created automatically)
 ```
 
 ## 🚀 Installation
@@ -121,19 +132,12 @@ pip install -r requirements.txt
 ```bash
 # Run with default settings
 python main.py
-```
 
-### Run with Custom Settings
+# Quick test with smaller sample
+python main.py --sample-size 50000 --no-tune
 
-```python
-from main import nyc_taxi_ml_pipeline
-
-# Run pipeline
-result = nyc_taxi_ml_pipeline(
-    sample_size=200000,      # Number of samples
-    tune_model=True,         # Enable hyperparameter tuning
-    promote_to_prod=False    # Auto-promote to production
-)
+# Full run with tuning and auto-promotion
+python main.py --sample-size 200000 --tune --promote
 ```
 
 ### View MLflow UI
@@ -153,6 +157,99 @@ prefect server start
 
 # Open browser at: http://127.0.0.1:4200
 ```
+
+## 🎯 Command-Line Usage
+
+The pipeline supports **parameterization** like Prefect's `week3_duration-prediction.py` pattern:
+
+### Basic Usage (main.py)
+
+```bash
+# Show all options
+python main.py --help
+
+# Run with custom sample size
+python main.py --sample-size 100000
+
+# Disable tuning for faster runs
+python main.py --no-tune
+
+# Auto-promote to production
+python main.py --tune --promote
+
+# Custom experiment name
+python main.py --experiment-name "quick_test"
+
+# Custom run name
+python main.py --run-name "baseline_model"
+```
+
+### Advanced Usage (main_advanced.py)
+
+Process specific year/month data (Prefect pattern):
+
+```bash
+# Process specific month
+python main_advanced.py --year 2023 --month 1
+
+# Process with tuning
+python main_advanced.py --year 2023 --month 2 --tune
+
+# Auto-promote to production
+python main_advanced.py --year 2023 --month 3 --tune --promote
+
+# Batch process multiple months
+for month in {1..12}; do
+    python main_advanced.py --year 2023 --month $month
+done
+```
+
+### Available Arguments
+
+**main.py:**
+```
+--sample-size INT        Number of samples (default: 200000)
+--tune / --no-tune       Enable/disable tuning (default: tune)
+--promote                Auto-promote to production
+--experiment-name STR    Custom MLflow experiment name
+--run-name STR          Custom run name
+--data-year INT         Year of data (default: 2016)
+--data-month INT        Month of data (default: 1)
+--debug                 Enable debug mode
+--skip-download         Skip data download
+```
+
+**main_advanced.py:**
+```
+--year INT              Year of data to process (default: 2016)
+--month INT             Month of data (1-12, default: 1)
+--sample-size INT       Number of samples (default: 200000)
+--tune / --no-tune      Enable/disable tuning
+--promote               Auto-promote to production
+--experiment-suffix STR Suffix for experiment name
+```
+
+### Common Workflows
+
+```bash
+# 1. Quick test (fast)
+python main.py --sample-size 50000 --no-tune
+
+# 2. Full training run
+python main.py --sample-size 200000 --tune
+
+# 3. Production deployment
+python main.py --tune --promote
+
+# 4. Monthly training (Prefect pattern)
+python main_advanced.py --year 2023 --month 1 --tune
+
+# 5. A/B testing different configs
+python main.py --sample-size 100000 --run-name "config_A"
+python main.py --sample-size 200000 --run-name "config_B"
+```
+
+See **PARAMETERIZATION_GUIDE.md** for detailed examples and production patterns.
 
 ## 📊 Pipeline Stages
 
@@ -339,6 +436,147 @@ With default settings:
 - Model lineage
 - Registry status
 
+## 🏭 Production Patterns
+
+### Scheduled Monthly Training
+
+Create a script to process data monthly:
+
+```bash
+#!/bin/bash
+# train_monthly.sh
+
+YEAR=$(date +%Y)
+MONTH=$(date +%m)
+
+python main_advanced.py \
+    --year $YEAR \
+    --month $MONTH \
+    --sample-size 200000 \
+    --tune \
+    --promote
+```
+
+Schedule with cron:
+```bash
+# Run on the 1st of every month at 2 AM
+0 2 1 * * cd /path/to/pipeline && ./train_monthly.sh
+```
+
+### Batch Processing Multiple Periods
+
+```bash
+# Process all months of 2023
+for month in {1..12}; do
+    echo "Processing 2023-${month}"
+    python main_advanced.py \
+        --year 2023 \
+        --month $month \
+        --tune \
+        --experiment-suffix "2023_monthly"
+done
+```
+
+### A/B Testing Different Configurations
+
+```bash
+# Test different sample sizes
+for size in 50000 100000 200000; do
+    python main.py \
+        --sample-size $size \
+        --tune \
+        --run-name "sample_${size}"
+done
+
+# Compare results in MLflow UI
+mlflow ui --backend-store-uri sqlite:///mlflow_nyc_taxi.db
+```
+
+### CI/CD Integration
+
+**GitHub Actions example:**
+
+```yaml
+# .github/workflows/train.yml
+name: Train Monthly Model
+
+on:
+  schedule:
+    - cron: '0 2 1 * *'  # 1st of each month at 2 AM
+  workflow_dispatch:      # Manual trigger
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      
+      - name: Run training pipeline
+        env:
+          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+        run: |
+          python main_advanced.py \
+            --year $(date +%Y) \
+            --month $(date +%m) \
+            --tune \
+            --promote
+      
+      - name: Upload MLflow artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: mlflow-db
+          path: mlflow_nyc_taxi.db
+```
+
+### Prefect Deployments
+
+```bash
+# Create deployment for monthly training
+prefect deployment build main_advanced.py:nyc_taxi_ml_pipeline_advanced \
+    -n "monthly-training" \
+    -p default-agent-pool \
+    --cron "0 2 1 * *"
+
+# Apply deployment
+prefect deployment apply nyc_taxi_ml_pipeline_advanced-deployment.yaml
+
+# Start agent to run deployments
+prefect agent start -p default-agent-pool
+```
+
+### Monitoring with MLflow
+
+Track all runs and compare:
+
+```python
+import mlflow
+from mlflow import MlflowClient
+
+# Connect to tracking server
+mlflow.set_tracking_uri('sqlite:///mlflow_nyc_taxi.db')
+client = MlflowClient()
+
+# Get all runs from experiment
+experiment = client.get_experiment_by_name('nyc_taxi_production_pipeline')
+runs = client.search_runs(experiment_ids=[experiment.experiment_id])
+
+# Compare performance across months
+for run in runs:
+    period = run.data.tags.get('data_period', 'N/A')
+    test_r2 = run.data.metrics.get('test_r2', 0)
+    print(f"{period}: R² = {test_r2:.4f}")
+```
+
 ## 🚨 Troubleshooting
 
 ### Kaggle API Error
@@ -367,12 +605,23 @@ result = nyc_taxi_ml_pipeline(sample_size=100000)
 
 The pipeline is designed for progressive enhancement:
 
+- [x] **Prefect Orchestration**: Task-based workflow ✅
+- [x] **MLflow Tracking**: Complete experiment tracking ✅
+- [x] **Command-Line Parameterization**: Production-ready CLI ✅
 - [ ] **Docker**: Containerize the pipeline
 - [ ] **FastAPI**: REST API for model serving  
 - [ ] **Monitoring**: Data drift, model performance monitoring
 - [ ] **CI/CD**: Automated testing and deployment
 - [ ] **Feature Store**: Centralized feature management
 - [ ] **A/B Testing**: Champion/challenger deployment
+
+## 📚 Additional Documentation
+
+- **QUICKSTART.md** - Get running in 5 minutes
+- **PARAMETERIZATION_GUIDE.md** - Complete CLI usage guide
+- **ARCHITECTURE.md** - Design decisions and diagrams
+- **PROJECT_SUMMARY.md** - Project overview
+- **QUICKFIX.md** - Common issues and fixes
 
 ## 📄 License
 
@@ -387,8 +636,49 @@ MIT License - Feel free to use for educational purposes
 
 ---
 
-**Ready to run?** Just execute:
+## 🎯 Quick Reference
+
+### Basic Commands
 ```bash
+# Quick test
+python main.py --sample-size 50000 --no-tune
+
+# Full training
+python main.py --tune
+
+# Production deployment
+python main.py --tune --promote
+```
+
+### Advanced Commands (Prefect Pattern)
+```bash
+# Process specific month
+python main_advanced.py --year 2023 --month 1 --tune
+
+# Batch processing
+for m in {1..3}; do 
+    python main_advanced.py --year 2023 --month $m
+done
+```
+
+### View Results
+```bash
+# MLflow UI
+mlflow ui --backend-store-uri sqlite:///mlflow_nyc_taxi.db
+
+# Prefect UI
+prefect server start
+```
+
+---
+
+**Ready to run?** 
+
+```bash
+# Validate setup first
+python validate_setup.py
+
+# Then run the pipeline
 python main.py
 ```
 

@@ -1,10 +1,17 @@
 """
 NYC Taxi ML Pipeline - Main Prefect Flow
 Production-ready ML pipeline with Prefect orchestration
+
+Usage:
+    python main.py --sample-size 200000 --tune --promote
+    python main.py --sample-size 100000 --no-tune
+    python main.py --help
 """
 
 import sys
+import argparse
 from pathlib import Path
+from datetime import datetime
 
 # Add src to path
 sys.path.append(str(Path(__file__).parent))
@@ -219,12 +226,133 @@ def nyc_taxi_ml_pipeline(
     }
 
 
+
+def parse_args():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(
+        description='NYC Taxi ML Pipeline - Prefect Orchestrated',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Run with default settings
+  python main.py
+  
+  # Smaller sample for quick testing
+  python main.py --sample-size 50000 --no-tune
+  
+  # Full run with tuning and auto-promotion
+  python main.py --sample-size 200000 --tune --promote
+  
+  # Custom configuration
+  python main.py --sample-size 100000 --tune --experiment-name "my_experiment"
+        """
+    )
+    
+    # Data parameters
+    parser.add_argument(
+        '--sample-size',
+        type=int,
+        default=200000,
+        help='Number of samples to use (default: 200000)'
+    )
+    
+    # Model parameters
+    parser.add_argument(
+        '--tune',
+        action='store_true',
+        default=True,
+        help='Enable hyperparameter tuning (default: True)'
+    )
+    
+    parser.add_argument(
+        '--no-tune',
+        action='store_false',
+        dest='tune',
+        help='Disable hyperparameter tuning'
+    )
+    
+    # Deployment parameters
+    parser.add_argument(
+        '--promote',
+        action='store_true',
+        default=False,
+        help='Automatically promote to production (default: False)'
+    )
+    
+    # MLflow parameters
+    parser.add_argument(
+        '--experiment-name',
+        type=str,
+        default=None,
+        help='MLflow experiment name (default: from config)'
+    )
+    
+    parser.add_argument(
+        '--run-name',
+        type=str,
+        default=None,
+        help='Custom run name for MLflow (default: auto-generated)'
+    )
+    
+    # Additional parameters for future enhancements
+    parser.add_argument(
+        '--data-year',
+        type=int,
+        default=2016,
+        help='Year of data to use (default: 2016)'
+    )
+    
+    parser.add_argument(
+        '--data-month',
+        type=int,
+        default=1,
+        choices=range(1, 13),
+        help='Month of data to use (default: 1)'
+    )
+    
+    # Debug options
+    parser.add_argument(
+        '--debug',
+        action='store_true',
+        help='Enable debug mode'
+    )
+    
+    parser.add_argument(
+        '--skip-download',
+        action='store_true',
+        help='Skip data download (use cached data)'
+    )
+    
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
+    # Parse command line arguments
+    args = parse_args()
+    
+    # Update config if custom experiment name provided
+    if args.experiment_name:
+        config.MLFLOW_EXPERIMENT_NAME = args.experiment_name
+    
+    # Print configuration
+    print("\n" + "=" * 70)
+    print("🚀 NYC TAXI ML PIPELINE")
+    print("=" * 70)
+    print(f"Configuration:")
+    print(f"  • Sample size:      {args.sample_size:,}")
+    print(f"  • Tuning:           {'Enabled' if args.tune else 'Disabled'}")
+    print(f"  • Auto-promote:     {'Yes' if args.promote else 'No'}")
+    print(f"  • Data period:      {args.data_year}-{args.data_month:02d}")
+    print(f"  • Experiment:       {config.MLFLOW_EXPERIMENT_NAME}")
+    if args.run_name:
+        print(f"  • Run name:         {args.run_name}")
+    print("=" * 70 + "\n")
+    
     # Run the pipeline
     result = nyc_taxi_ml_pipeline(
-        sample_size=200000,
-        tune_model=True,
-        promote_to_prod=False  # Set to True for auto-promotion
+        sample_size=args.sample_size,
+        tune_model=args.tune,
+        promote_to_prod=args.promote
     )
     
     print("\n" + "=" * 70)
@@ -232,3 +360,4 @@ if __name__ == "__main__":
     print("=" * 70)
     for key, value in result.items():
         print(f"   {key}: {value}")
+    print("=" * 70)
