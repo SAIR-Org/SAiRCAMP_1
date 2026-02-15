@@ -1,0 +1,22 @@
+# NYC Taxi ML Pipeline - Dependencies
+
+# Core ML Libraries
+numpy>=1.24.0
+pandas>=2.0.0
+scikit-learn>=1.3.0
+
+# MLflow for experiment tracking and model registry
+mlflow>=2.9.0
+
+# Prefect for workflow orchestration
+prefect>=2.14.0
+
+# Data source
+kagglehub>=0.2.0
+
+# Visualization (optional, for notebooks)
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Utilities
+joblib>=1.3.0
