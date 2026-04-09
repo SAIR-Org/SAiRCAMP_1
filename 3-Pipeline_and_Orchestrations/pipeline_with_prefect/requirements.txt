@@ -1,0 +1,17 @@
+# Core ML
+scikit-learn>=1.3.0
+numpy>=1.24.0
+pandas>=2.0.0
+
+# MLflow experiment tracking and registry
+mlflow>=2.8.0
+
+# Prefect orchestration
+# This is the ONLY new dependency vs pipline_no_perfect/
+prefect>=2.14.0
+
+# Data source
+kagglehub>=0.1.0
+
+# Utilities
+joblib>=1.3.0
