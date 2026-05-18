@@ -22,7 +22,6 @@ venv/
 # =========================
 # Data & artifacts
 # =========================
-data/
 models/
 *.pkl
 *.joblib
