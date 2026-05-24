@@ -174,11 +174,10 @@ from config.config import MLFLOW_TRACKING_URI  # import this in all downstream c
 
 ```bash
 # From the repo root
-python -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
+uv sync
+source .venv/bin/activate
 
 cd 4-Deployment/pipeline
-pip install -r requirements.txt
 ```
 
 ### 2. Run the pipeline

@@ -82,10 +82,18 @@ Rolling back is re-assigning the Production stage to a previous version.
 
 ---
 
+## Setup
+
+```bash
+# From repo root (one-time):
+uv sync
+source .venv/bin/activate
+```
+
 ## How to Start the MLflow UI
 
 ```bash
-# From this directory:
+cd 2-Exp_tracking
 mlflow ui --backend-store-uri sqlite:///mlflow_nyc_taxi.db
 # Open http://127.0.0.1:5000
 ```

@@ -28,9 +28,11 @@ Data Download (Kaggle)
 ## How to Run
 
 ```bash
-cd pipline_no_perfect
+# From repo root (one-time):
+uv sync
+source .venv/bin/activate
 
-pip install -r requirements.txt
+cd 3-Pipeline_and_Orchestrations/pipline_no_perfect
 
 # Quick test (small data, no tuning)
 python main.py --sample-size 50000 --skip-tuning

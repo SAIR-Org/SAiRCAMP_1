@@ -73,9 +73,11 @@ from the flow to get retries, state, and UI visibility.
 ### Without the UI (terminal only)
 
 ```bash
-cd pipeline_with_prefect
+# From repo root (one-time):
+uv sync
+source .venv/bin/activate
 
-pip install -r requirements.txt
+cd 3-Pipeline_and_Orchestrations/pipeline_with_prefect
 
 # Quick test
 python main.py --sample-size 50000 --no-tune
