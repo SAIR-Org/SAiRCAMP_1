@@ -20,8 +20,6 @@ Built on top of `pipeline_with_prefect/` — same Prefect structure, same orches
 | `src/models/model_training.py` | Added XGBoost; `artifact_path` → `name` | Better model; MLflow 3.x API change |
 | `src/models/model_registry.py` | Stages → Aliases (`@champion`/`@challenger`) | MLflow 3.x removed stage-based transitions |
 | `flow.py` | Feature importance task (Step 9); test metrics fix; alias labels | New logging; bug fix; MLflow 3.x |
-| `src/models/model_deployment.py` | Identical | — |
-| `src/utils/` | Identical | — |
 | `main.py` | Identical | — |
 
 ---
@@ -172,29 +170,79 @@ from config.config import MLFLOW_TRACKING_URI  # import this in all downstream c
 
 ## How to Run
 
+### 1. Setup (first time only)
+
 ```bash
+# From the repo root
+python -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+
 cd 4-Deployment/pipeline
-
-# Quick test (small sample, no tuning)
-python main.py --sample-size 50000 --no-tune
-
-# Full training run (registers to @challenger)
-python main.py --sample-size 500000 --tune
-
-# Full run + promote to @champion
-python main.py --sample-size 500000 --tune --promote
-
-# With Prefect UI
-prefect server start   # Terminal 1 → http://127.0.0.1:4200
-python main.py         # Terminal 2
+pip install -r requirements.txt
 ```
 
-### View MLflow results
+### 2. Run the pipeline
+
+```bash
+# Quick smoke test — 50k rows, no tuning (~5 min)
+python main.py --sample-size 50000 --no-tune
+
+# Standard run — 500k rows with tuning, registers @challenger (~25 min)
+python main.py --sample-size 500000 --tune
+
+# Full run + promote winner to @champion
+python main.py --sample-size 500000 --tune --promote
+```
+
+Expected output (abridged):
+
+```
+Step 1  ✅ Loaded 500,000 rows
+Step 2  ✅ 480,899 rows retained (96.2%)
+Step 3  ✅ Train 307k / Val 77k / Test 96k
+Step 4  ✅ 23 engineered features
+Step 5  ✅ 6 models trained
+        🏆 Best: XGBoost | Val R²: 0.8156
+Step 6  ✅ Tuning complete
+Step 7  ✅ Test R²: 0.817 | MAE: 3.07 min
+Step 8  ✅ Model v28 → @challenger
+Step 9  ✅ Feature importances logged
+```
+
+### 3. View results in MLflow
 
 ```bash
 mlflow ui --backend-store-uri sqlite:///mlflow_nyc_taxi_v2.db
 # Open http://127.0.0.1:5000
 ```
+
+What you'll see: all 6 model runs per pipeline execution, sortable by any metric.
+The registered model `nyc_taxi_v2` shows version history with `@champion`/`@challenger` aliases.
+
+### 4. Optional — watch the pipeline live in Prefect UI
+
+```bash
+# Terminal 1
+prefect server start
+# Open http://127.0.0.1:4200
+
+# Terminal 2
+python main.py --sample-size 500000 --tune --promote
+```
+
+Each of the 9 steps appears as a node in the flow graph with timing, logs, and retry state.
+
+### 5. Load the registered model
+
+```python
+import mlflow
+from config.config import MLFLOW_TRACKING_URI
+
+mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+model = mlflow.sklearn.load_model("models:/nyc_taxi_v2@champion")
+```
+
+This is the exact pattern used by `api/`, `batch/`, and `monitoring/`.
 
 ---
 
@@ -202,24 +250,22 @@ mlflow ui --backend-store-uri sqlite:///mlflow_nyc_taxi_v2.db
 
 ```
 pipeline/
-├── README.md
-├── flow.py                             Prefect @flow + @tasks (9 steps)
-├── main.py                             CLI entry point
+├── flow.py          Prefect @flow + @tasks (9 steps)
+├── main.py          CLI entry point
+├── requirements.txt
 ├── config/
-│   └── config.py                       CHANGED — TLC source, XGBoost, absolute URI
+│   └── config.py    DataConfig, ModelConfig, MLflowConfig, load_config()
 └── src/
     ├── data/
-    │   ├── data_acquisition.py         CHANGED — TLC HTTP download, per-month sampling
-    │   └── data_preprocessing.py       CHANGED — removed lat/lon filter
+    │   ├── data_acquisition.py      TLC parquet download, per-month sampling
+    │   └── data_preprocessing.py   Duration filter, distance filter, feature/target split
     ├── features/
-    │   └── feature_engineering.py      CHANGED — zone ID + centroid + efficiency features
+    │   └── feature_engineering.py  23 features: zone + centroid + temporal + categorical
     ├── models/
-    │   ├── model_training.py           CHANGED — XGBoost added, MLflow 3.x API fix
-    │   ├── model_registry.py           CHANGED — stages → aliases (MLflow 3.x)
-    │   └── model_deployment.py         Identical
+    │   ├── model_training.py       6 models, MLflow tracking, HalvingRandomSearchCV
+    │   └── model_registry.py       @champion/@challenger aliases (MLflow 3.x)
     └── utils/
-        ├── logging_utils.py            Identical
-        └── retry_utils.py              Identical
+        └── (empty — Prefect handles logging and retries)
 ```
 
 ---
