@@ -477,6 +477,7 @@ def nyc_taxi_pipeline(
     # ── Load and apply config ─────────────────────────────────────────────────
     config = load_config()
     config.data.sample_size = sample_size
+    config.data.samples_per_month = sample_size // len(config.data.train_months)
     if experiment_name:
         config.mlflow.experiment_name = experiment_name
 
