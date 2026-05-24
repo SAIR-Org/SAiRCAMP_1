@@ -1,28 +1,4 @@
-"""
-Data acquisition for 4-Deployment/pipeline
-============================================
-CHANGES FROM pipeline_with_prefect/src/data/data_acquisition.py:
-
-  REMOVED: kagglehub dependency entirely
-  REMOVED: CSV chunked loading (chunk_size, num_chunks)
-  REMOVED: file_path / dataset_path attributes (no local file)
-
-  ADDED:   TLC direct parquet download via HTTP
-  ADDED:   download_month(year, month) — fetches one month, returns DataFrame
-  ADDED:   Per-month sampling before combining (memory efficient)
-
-  UNCHANGED: validate_data(), run() structure
-  UNCHANGED: Prefect retry logic lives in flow.py — not here
-
-WHY parquet over CSV:
-  Parquet is column-oriented. Fetching 8 columns from a 20-column file downloads
-  ~40% of the data. For a 500MB monthly file that means ~200MB per month.
-  CSV has no column selection — you always download everything.
-
-WHY per-month sampling:
-  2019 has ~7.7M trips/month. Loading all 12 months = ~90M rows before sampling.
-  Sampling per month (125k each) keeps peak memory under 500MB.
-"""
+"""Download NYC TLC parquet data directly from the official source."""
 import pandas as pd
 import logging
 from typing import List, Optional

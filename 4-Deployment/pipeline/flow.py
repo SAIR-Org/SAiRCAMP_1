@@ -1,48 +1,22 @@
 """
-flow.py — NYC Taxi ML Pipeline v2 (TLC 2019 data)
-===================================================
-CHANGES FROM pipeline_with_prefect/flow.py:
+Prefect-orchestrated NYC Taxi ML pipeline — 9 steps, 6 models, MLflow tracking.
 
-  ADDED tags (traceability):
-    'data_source': 'tlc_direct'
-    'schema_version': 'zone_ids'
-
-  ADDED task: log_feature_importance (Step 9)
-  WHY:  Logs XGBoost feature importances as a JSON artifact + top-10 metrics
-        to the registered model's MLflow run. Students can see which features
-        drive the model directly from the MLflow UI.
-
-  FIXED: test metrics re-logging in register_model task
-  WHY:  When tuning runs but doesn't improve the model, best_result['run_id']
-        points to the tuning run while the registered version lives on the base
-        training run. Test metrics were logged to the wrong run (showed as 0).
-        The fix re-logs them to the version's actual run_id when they differ.
-
-  CHANGED: @champion/@challenger aliases replace Staging/Production stage labels
-  WHY:  MLflow 3.x removed stage-based transitions. See model_registry.py.
-
-WHAT THIS FILE DOES (unchanged from pipeline_with_prefect):
-  - Wraps each pipeline step in a Prefect @task
-  - Combines all tasks in a Prefect @flow (replaces NYCTaxiMLPipeline.run())
-  - Documents exactly WHY each Prefect primitive is used
-
-PIPELINE STEPS:
+Steps:
   1. acquire_data          download TLC parquet, sample per month
   2. preprocess_data       clean, filter, compute target
   3. split_data            train/val/test before feature engineering (no leakage)
   4. engineer_features     fit preprocessor on train only, transform all sets
   5. train_single_model    one @task per model (6 models)
-  5b. select_best_model    pick winner by val R²
+  5b select_best_model     pick winner by val R²
   6. tune_model            HalvingRandomSearchCV on best model
   7. evaluate_model        test set evaluation (runs once, after all training)
   8. register_model        MLflow registry → @challenger or @champion
   9. log_feature_importance tree model importances as artifact
 
-HOW TO RUN:
-  python main.py                              # full pipeline, defaults
+Usage:
   python main.py --sample-size 50000 --no-tune
   python main.py --sample-size 500000 --tune --promote
-  prefect server start                        # start UI first (optional)
+  prefect server start   # optional UI at http://127.0.0.1:4200
 """
 
 import sys
@@ -81,7 +55,7 @@ from src.models.model_registry import ModelRegistry
 #   "Attempt 1 failed: network timeout, retrying in 10s..." in the task log.
 #
 # WHY retry_delay_seconds=10:
-#   Kaggle downloads can fail transiently. 10s gives the network time to recover.
+#   TLC/S3 downloads can fail transiently. 10s gives the network time to recover.
 # =============================================================================
 @task(name="acquire-data", retries=3, retry_delay_seconds=10)
 def acquire_data(config):

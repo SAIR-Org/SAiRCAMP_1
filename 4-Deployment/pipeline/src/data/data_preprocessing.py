@@ -1,24 +1,4 @@
-"""
-Data preprocessing for 4-Deployment/pipeline
-==============================================
-CHANGES FROM pipeline_with_prefect/src/data/data_preprocessing.py:
-
-  REMOVED: Geographic coordinate filter (lat/lon bounds check)
-           WHY: Zone IDs (PULocationID/DOLocationID) are by definition
-                within NYC — no bounds filtering needed. The 2019 TLC
-                data contains no invalid geographic entries.
-
-           The removed block was:
-             df_clean = df_clean[
-                 df_clean['pickup_latitude'].between(*config.nyc_lat_range) &
-                 df_clean['pickup_longitude'].between(*config.nyc_lon_range) &
-                 df_clean['dropoff_latitude'].between(*config.nyc_lat_range) &
-                 df_clean['dropoff_longitude'].between(*config.nyc_lon_range)
-             ]
-
-  UNCHANGED: Everything else — duration filter, distance filter,
-             passenger count filter, sample, prepare_features_target, run()
-"""
+"""Clean 2019 TLC data and compute the trip duration target."""
 import pandas as pd
 import numpy as np
 import logging

@@ -1,30 +1,4 @@
-"""
-Model registry module for NYC Taxi ML Pipeline
-================================================
-CHANGES FROM pipeline_with_prefect/src/models/model_registry.py:
-
-  REWRITTEN: Stages → Aliases (MLflow 3.x breaking change)
-  WHY:       MLflow 3.x removed stage-based transitions entirely.
-             transition_model_version_stage() and get_latest_versions(stages=[])
-             are gone. The new API uses set_registered_model_alias().
-
-  OLD (MLflow <2.9):
-    client.transition_model_version_stage(name, version, "Production")
-    mlflow.sklearn.load_model("models:/nyc_taxi_v2/Production")
-
-  NEW (MLflow 3.x):
-    client.set_registered_model_alias(name, "champion", version)
-    mlflow.sklearn.load_model("models:/nyc_taxi_v2@champion")
-
-  ALIAS CONVENTION:
-    @champion    replaces Production  — loaded by api/, batch/, monitoring/
-    @challenger  replaces Staging     — loaded by retrain/ for comparison
-
-  ADDED: fallback in transition_to_staging() when run_id lookup fails
-  WHY:   When tuning doesn't improve the model (improvement < threshold),
-         no new version is registered under the tuning run_id. The fallback
-         selects the most recently registered version instead.
-"""
+"""MLflow model registry using aliases (MLflow 3.x — @champion/@challenger)."""
 import logging
 from typing import List, Optional, Dict
 from mlflow import MlflowClient
@@ -132,14 +106,6 @@ class ModelRegistry:
             return self.client.get_model_version_by_alias(self.model_name, alias)
         except Exception:
             return None
-
-    def get_model_by_stage(self, stage: str) -> Optional[ModelVersion]:
-        """Compatibility shim — maps old stage names to aliases."""
-        alias_map = {"Production": CHAMPION, "Staging": CHALLENGER}
-        alias = alias_map.get(stage)
-        if alias:
-            return self.get_model_by_alias(alias)
-        return None
 
     def print_registry_status(self):
         logger.info("📊 Model Registry Status:")

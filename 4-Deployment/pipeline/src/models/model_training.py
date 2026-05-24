@@ -1,37 +1,4 @@
-"""
-Model training module for NYC Taxi ML Pipeline
-================================================
-CHANGES FROM pipeline_with_prefect/src/models/model_training.py:
-
-  ADDED:   XGBRegressor to build_model_portfolio()
-  WHY:     XGBoost consistently outperforms sklearn GBM on tabular data.
-           Added after benchmarking showed Random Forest at R²=0.785 vs
-           2016 pipeline at R²=0.833. XGBoost + centroid features closed
-           the gap to R²=0.817.
-
-  ADDED:   XGBoost param grid in tune_model()
-  WHY:     HalvingRandomSearchCV now searches over XGBoost hyperparameters
-           (n_estimators, learning_rate, max_depth, subsample, colsample_bytree).
-
-  ADDED:   build_model_portfolio() as a standalone module-level function.
-  WHY:     The Prefect flow iterates models and submits each as a separate @task.
-           A standalone function lets flow.py call it without instantiating
-           ModelTrainer (which builds all 6 models on init).
-
-  CHANGED: artifact_path='model' → name='model' in log_model() calls
-  WHY:     MLflow 3.x renamed artifact_path to name. Old parameter raises
-           FutureWarning and will break in a future release.
-
-  REMOVED: @retry_with_backoff decorators on train_single_model() and tune_model()
-  WHY:     Prefect's @task(retries=1) in flow.py handles retries at the task level.
-           Failed model training is now visible in the Prefect UI with retry state.
-
-MODEL PORTFOLIO (6 models):
-  Linear Regression, Ridge, Lasso     — baselines
-  Random Forest                        — strong tree ensemble
-  Gradient Boosting (sklearn)          — sequential boosting
-  XGBoost                              — champion in practice, R²=0.817
-"""
+"""Train 6 models, tune the winner, evaluate on test set — all tracked in MLflow."""
 import time
 import numpy as np
 import logging
@@ -40,7 +7,7 @@ from sklearn.linear_model import LinearRegression, Ridge, Lasso
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from xgboost import XGBRegressor
 from sklearn.experimental import enable_halving_search_cv  # noqa: F401
-from sklearn.model_selection import HalvingRandomSearchCV, cross_val_score
+from sklearn.model_selection import HalvingRandomSearchCV
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 import mlflow
 import mlflow.sklearn
@@ -114,11 +81,6 @@ class ModelTrainer:
         self.model_config = model_config
         self.mlflow_config = mlflow_config
         self.client = client
-        # Delegate to the standalone function so flow.py can use it independently
-        self.models = build_model_portfolio(model_config)
-        self.results = {}
-        self.trained_models = {}
-        self.run_ids = {}
 
     def train_single_model(
         self,
@@ -274,25 +236,6 @@ class ModelTrainer:
             logger.info(f"   Best CV R²: {search.best_score_:.4f}, Time: {tuning_time:.1f}s")
 
             return search.best_estimator_, run.info.run_id, search.best_score_
-
-    def cross_validate_model(self, model, X_train, y_train, run_id) -> np.ndarray:
-        """Cross-validate model and log results to MLflow."""
-        logger.info("🔬 Cross-validating best model...")
-
-        cv_scores = cross_val_score(
-            model, X_train, y_train,
-            cv=self.model_config.cv_folds,
-            scoring='r2',
-            n_jobs=self.model_config.n_jobs
-        )
-
-        logger.info(f"   CV R²: {cv_scores.mean():.4f} ± {cv_scores.std():.4f}")
-
-        with mlflow.start_run(run_id=run_id):
-            mlflow.log_metric('cv_r2_mean', cv_scores.mean())
-            mlflow.log_metric('cv_r2_std', cv_scores.std())
-
-        return cv_scores
 
     def evaluate_on_test(self, model, X_test, y_test, run_id) -> Dict[str, float]:
         """Evaluate model on the held-out test set."""
