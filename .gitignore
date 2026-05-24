@@ -22,7 +22,12 @@ venv/
 # =========================
 # Data & artifacts
 # =========================
+data/
+!**/src/data/
+*.parquet
+*.csv.gz
 models/
+!**/src/models/
 *.pkl
 *.joblib
 
