@@ -1,7 +1,7 @@
 # SAiRCAMP
 
 A hands-on, project-based MLOps course built around a single real-world problem —
-NYC Yellow Taxi trip duration prediction — developed progressively across modules.
+trip duration prediction — developed progressively across modules.
 
 ---
 
@@ -26,7 +26,7 @@ SAiRCAMP runs in parallel with **[MLOps From First Principles (DDODS)](../DDODS/
 DDODS                                   SAiRCAMP
 ──────────────────────────────          ──────────────────────────────
 Concept-first, broad coverage           Project-first, production depth
-Simple demos (Iris, telco churn)        One real dataset (NYC taxi, 1M+ rows)
+Simple demos (Iris, telco churn)        One real dataset (taxi trips, 1M+ rows)
 Each tool introduced in isolation       Tools layered onto a growing system
 Read the guide, then run the demo       Watch it built live, then run it yourself
 ```

@@ -1,7 +1,7 @@
 # Feature Engineering
 
 **File:** `src/features/feature_engineering.py`  
-**Classes:** `NYCTaxiFeatureEngineer`, `OutlierHandler`  
+**Classes:** `TripFeatureEngineer`, `OutlierHandler`  
 **Function:** `build_preprocessor()`
 
 ---
@@ -147,7 +147,7 @@ is_weekend                 0.000
 
 ```python
 build_preprocessor() returns sklearn.Pipeline([
-    ('feature_engineer', NYCTaxiFeatureEngineer()),   # raw → 23 features
+    ('feature_engineer', TripFeatureEngineer()),       # raw → 23 features
     ('outlier_handler',  OutlierHandler(factor=1.5)), # IQR clipping
     ('scaler',           RobustScaler()),              # median/IQR scaling
 ])

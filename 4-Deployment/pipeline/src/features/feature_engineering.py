@@ -118,7 +118,7 @@ for _z, (_x, _y) in ZONE_CENTROIDS.items():
 _FEET_PER_MILE = 5280.0
 
 
-class NYCTaxiFeatureEngineer(BaseEstimator, TransformerMixin):
+class TripFeatureEngineer(BaseEstimator, TransformerMixin):
     """Feature engineering for 2019+ TLC data (zone IDs, no lat/lon)."""
 
     def __init__(self):
@@ -240,7 +240,7 @@ class OutlierHandler(BaseEstimator, TransformerMixin):
 def build_preprocessor(iqr_factor: float = 1.5) -> Pipeline:
     """Build preprocessing pipeline — identical structure to pipeline_with_prefect."""
     return Pipeline([
-        ('feature_engineer', NYCTaxiFeatureEngineer()),
+        ('feature_engineer', TripFeatureEngineer()),
         ('outlier_handler',  OutlierHandler(factor=iqr_factor)),
         ('scaler',           RobustScaler()),
     ])

@@ -1,5 +1,5 @@
 """
-Prefect-orchestrated NYC Taxi ML pipeline — 9 steps, 6 models, MLflow tracking.
+Prefect-orchestrated trip duration ML pipeline — 9 steps, 6 models, MLflow tracking.
 
 Steps:
   1. acquire_data          download TLC parquet, sample per month
@@ -59,7 +59,7 @@ from src.models.model_registry import ModelRegistry
 # =============================================================================
 @task(name="acquire-data", retries=3, retry_delay_seconds=10)
 def acquire_data(config):
-    """Download and load the NYC Taxi dataset."""
+    """Download and load the TLC trip dataset."""
     logger = get_run_logger()
     logger.info("📥 Step 1: Data Acquisition")
 
@@ -449,18 +449,18 @@ def log_feature_importance(best_result, feature_names, model_version, config):
 #   experiment_name : override the MLflow experiment name
 # =============================================================================
 @flow(
-    name="nyc-taxi-ml-pipeline",
-    description="NYC Taxi trip duration prediction — Prefect orchestrated",
+    name="trip-duration-pipeline",
+    description="Trip duration prediction — Prefect orchestrated",
     log_prints=True
 )
-def nyc_taxi_pipeline(
+def trip_duration_pipeline(
     sample_size: int = 200000,
     tune: bool = True,
     promote_to_prod: bool = False,
     experiment_name: Optional[str] = None
 ):
     """
-    End-to-end ML pipeline for NYC Taxi trip duration prediction.
+    End-to-end ML pipeline for trip duration prediction.
 
     Steps:
       1. Acquire data     (retries=3)
@@ -489,7 +489,7 @@ def nyc_taxi_pipeline(
     mlflow.set_experiment(config.mlflow.experiment_name)
 
     logger.info("=" * 60)
-    logger.info("NYC TAXI ML PIPELINE — PREFECT ORCHESTRATED")
+    logger.info("TRIP DURATION PIPELINE — PREFECT ORCHESTRATED")
     logger.info(f"  sample_size    : {sample_size:,}")
     logger.info(f"  tune           : {tune}")
     logger.info(f"  promote_to_prod: {promote_to_prod}")

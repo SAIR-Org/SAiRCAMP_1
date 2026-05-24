@@ -100,7 +100,7 @@ class ModelConfig:
 
 # Absolute path anchored to pipeline/ — all downstream components share this URI.
 _PIPELINE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_MLFLOW_DB_PATH = os.path.join(_PIPELINE_DIR, "mlflow_nyc_taxi_v2.db")
+_MLFLOW_DB_PATH = os.path.join(_PIPELINE_DIR, "mlflow_trip_duration.db")
 MLFLOW_TRACKING_URI = f"sqlite:///{_MLFLOW_DB_PATH}"
 
 
@@ -108,8 +108,8 @@ MLFLOW_TRACKING_URI = f"sqlite:///{_MLFLOW_DB_PATH}"
 class MLflowConfig:
     """MLflow tracking and registry configuration."""
 
-    experiment_name: str = "nyc_taxi_v2_tlc"
-    model_name: str = "nyc_taxi_v2"
+    experiment_name: str = "trip_duration_v2"
+    model_name: str = "trip_duration_model"
     tracking_uri: str = MLFLOW_TRACKING_URI
 
     min_r2_improvement: float = 0.01

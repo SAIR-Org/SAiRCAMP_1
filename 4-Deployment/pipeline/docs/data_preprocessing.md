@@ -118,4 +118,4 @@ X: pd.DataFrame   # prediction_time_features only, shape (N, 8)
 y: np.ndarray     # trip_duration_minutes, shape (N,)
 ```
 
-The DataFrame `X` still contains raw columns at this stage — feature engineering (zone pair, centroids, temporal features) happens downstream in `NYCTaxiFeatureEngineer`.
+The DataFrame `X` still contains raw columns at this stage — feature engineering (zone pair, centroids, temporal features) happens downstream in `TripFeatureEngineer`.

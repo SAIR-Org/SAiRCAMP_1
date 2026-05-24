@@ -19,7 +19,7 @@ class DataPreprocessor:
         self.final_rows = 0
 
     def clean_data(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Clean NYC taxi data with NO DATA LEAKAGE."""
+        """Clean raw trip data with NO DATA LEAKAGE."""
         logger.info("🧹 Cleaning data...")
         self.initial_rows = len(df)
         df_clean = df.copy()

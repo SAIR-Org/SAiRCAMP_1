@@ -1,4 +1,4 @@
-# NYC Taxi ML Pipeline v2 — TLC 2019 Data
+# Trip Duration Pipeline v2 — TLC 2019 Data
 
 Production pipeline for Module 4.
 Built on top of `pipeline_with_prefect/` — same Prefect structure, same orchestration pattern.
@@ -147,18 +147,18 @@ sample_size  = 500000           # ~125k per month
 This pipeline uses **separate MLflow database and model name** from Module 3:
 
 ```
-pipeline_with_prefect:  mlflow_nyc_taxi.db     model: nyc_taxi_predictor
-this pipeline:          mlflow_nyc_taxi_v2.db   model: nyc_taxi_v2
+pipeline_with_prefect:  mlflow_nyc_taxi.db       model: nyc_taxi_predictor
+this pipeline:          mlflow_trip_duration.db  model: trip_duration_model
 ```
 
 **MLflow 3.x alias convention** (replaces deprecated stage transitions):
 
 ```python
 # Load champion (what api/, batch/, monitoring/ use):
-mlflow.sklearn.load_model("models:/nyc_taxi_v2@champion")
+mlflow.sklearn.load_model("models:/trip_duration_model@champion")
 
 # Load challenger (what retrain/ compares against):
-mlflow.sklearn.load_model("models:/nyc_taxi_v2@challenger")
+mlflow.sklearn.load_model("models:/trip_duration_model@challenger")
 ```
 
 The tracking URI is absolute and anchored to this directory:
@@ -211,12 +211,12 @@ Step 9  ✅ Feature importances logged
 ### 3. View results in MLflow
 
 ```bash
-mlflow ui --backend-store-uri sqlite:///mlflow_nyc_taxi_v2.db
+mlflow ui --backend-store-uri sqlite:///mlflow_trip_duration.db
 # Open http://127.0.0.1:5000
 ```
 
 What you'll see: all 6 model runs per pipeline execution, sortable by any metric.
-The registered model `nyc_taxi_v2` shows version history with `@champion`/`@challenger` aliases.
+The registered model `trip_duration_model` shows version history with `@champion`/`@challenger` aliases.
 
 ### 4. Optional — watch the pipeline live in Prefect UI
 
@@ -238,7 +238,7 @@ import mlflow
 from config.config import MLFLOW_TRACKING_URI
 
 mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
-model = mlflow.sklearn.load_model("models:/nyc_taxi_v2@champion")
+model = mlflow.sklearn.load_model("models:/trip_duration_model@champion")
 ```
 
 This is the exact pattern used by `api/`, `batch/`, and `monitoring/`.

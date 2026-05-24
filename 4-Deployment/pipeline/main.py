@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-main.py — Entry point for the Prefect-orchestrated NYC Taxi ML Pipeline
+main.py — Entry point for the Prefect-orchestrated Trip Duration Pipeline
 
 Usage:
   python main.py                                  # full run, defaults
@@ -21,12 +21,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from flow import nyc_taxi_pipeline
+from flow import trip_duration_pipeline
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="NYC Taxi ML Pipeline — Prefect Orchestrated",
+        description="Trip Duration Pipeline — Prefect Orchestrated",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -40,7 +40,7 @@ Examples:
   python main.py --sample-size 200000 --tune --promote
 
   # Custom experiment name in MLflow
-  python main.py --experiment-name nyc_taxi_v2
+  python main.py --experiment-name trip_duration_v2
 
   # Start Prefect UI first, then run
   prefect server start &
@@ -76,7 +76,7 @@ if __name__ == '__main__':
     args = parse_args()
 
     print("\n" + "=" * 60)
-    print("NYC TAXI ML PIPELINE — PREFECT ORCHESTRATED")
+    print("TRIP DURATION PIPELINE — PREFECT ORCHESTRATED")
     print("=" * 60)
     print(f"  sample_size : {args.sample_size:,}")
     print(f"  tune        : {args.tune}")
@@ -85,7 +85,7 @@ if __name__ == '__main__':
         print(f"  experiment  : {args.experiment_name}")
     print("=" * 60 + "\n")
 
-    result = nyc_taxi_pipeline(
+    result = trip_duration_pipeline(
         sample_size=args.sample_size,
         tune=args.tune,
         promote_to_prod=args.promote,

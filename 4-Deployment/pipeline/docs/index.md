@@ -25,7 +25,7 @@ Data flow:
     → DataAcquisition.run()          500k rows, 4 months sampled
     → DataPreprocessor.run()         ~96% retained after filters
     → train/val/test split           64% / 16% / 20%
-    → NYCTaxiFeatureEngineer         23 features
+    → TripFeatureEngineer            23 features
     → OutlierHandler + RobustScaler
     → 6 models trained in parallel   LR, Ridge, Lasso, RF, GBM, XGBoost
     → best model tuned               HalvingRandomSearchCV
@@ -38,7 +38,7 @@ Load the model (all downstream components):
   import mlflow
   from config.config import MLFLOW_TRACKING_URI
   mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
-  model = mlflow.sklearn.load_model("models:/nyc_taxi_v2@champion")
+  model = mlflow.sklearn.load_model("models:/trip_duration_model@champion")
 ```
 
 ```

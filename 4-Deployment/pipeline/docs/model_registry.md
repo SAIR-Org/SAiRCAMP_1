@@ -7,7 +7,7 @@
 
 ## Overview
 
-Manages the MLflow model registry for `nyc_taxi_v2`. Handles version registration, alias assignment, and the champion/challenger promotion pattern used across all Module 4 components.
+Manages the MLflow model registry for `trip_duration_model`. Handles version registration, alias assignment, and the champion/challenger promotion pattern used across all Module 4 components.
 
 ---
 
@@ -18,11 +18,11 @@ MLflow 2.9+ deprecated stage-based transitions. MLflow 3.x removed them entirely
 ```
 OLD (MLflow < 2.9) — broken in MLflow 3.x:
   client.transition_model_version_stage(model_name, version, "Production")
-  mlflow.sklearn.load_model("models:/nyc_taxi_v2/Production")
+  mlflow.sklearn.load_model("models:/trip_duration_model/Production")
 
 NEW (MLflow 3.x):
   client.set_registered_model_alias(model_name, "champion", version)
-  mlflow.sklearn.load_model("models:/nyc_taxi_v2@champion")
+  mlflow.sklearn.load_model("models:/trip_duration_model@champion")
 ```
 
 **Why aliases are better than stages:**
@@ -66,12 +66,12 @@ import mlflow
 from config.config import MLFLOW_TRACKING_URI   # absolute path, works from any directory
 
 mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
-model = mlflow.sklearn.load_model("models:/nyc_taxi_v2@champion")
+model = mlflow.sklearn.load_model("models:/trip_duration_model@champion")
 ```
 
 `MLFLOW_TRACKING_URI` is an absolute path computed from `config.py`'s location:
 ```
-sqlite:////home/silva/.../4-Deployment/pipeline/mlflow_nyc_taxi_v2.db
+sqlite:////home/silva/.../4-Deployment/pipeline/mlflow_trip_duration.db
 ```
 
 This means `api/`, `batch/`, and `monitoring/` can all import this constant and point to the same database regardless of which directory they're run from.
@@ -92,7 +92,7 @@ register_model task → @challenger assigned to version N
 Old versions are never deleted. Every training run is permanent. This means you can always roll back by re-assigning the `@champion` alias to any previous version:
 
 ```python
-client.set_registered_model_alias("nyc_taxi_v2", "champion", "16")
+client.set_registered_model_alias("trip_duration_model", "champion", "16")
 ```
 
 ---
@@ -100,13 +100,13 @@ client.set_registered_model_alias("nyc_taxi_v2", "champion", "16")
 ## Database
 
 ```
-Location:  4-Deployment/pipeline/mlflow_nyc_taxi_v2.db
+Location:  4-Deployment/pipeline/mlflow_trip_duration.db
 Format:    SQLite
 Shared by: pipeline/, api/, batch/, monitoring/, retrain/
 ```
 
 **Why a separate DB from Module 3?**  
-`pipeline_with_prefect/` uses `mlflow_nyc_taxi.db` with model name `nyc_taxi_predictor`. Module 4 uses `mlflow_nyc_taxi_v2.db` with model name `nyc_taxi_v2`. Students can open both MLflow UIs independently and see the evolution from Module 3 to Module 4.
+`pipeline_with_prefect/` uses `mlflow_nyc_taxi.db` with model name `nyc_taxi_predictor`. Module 4 uses `mlflow_trip_duration.db` with model name `trip_duration_model`. Students can open both MLflow UIs independently and see the evolution from Module 3 to Module 4.
 
 ---
 

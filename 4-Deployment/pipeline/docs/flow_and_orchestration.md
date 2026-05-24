@@ -86,7 +86,7 @@ The scaler's median, IQR, and the outlier bounds are computed from training rows
 
 ```python
 @flow
-def nyc_taxi_ml_pipeline(
+def trip_duration_pipeline(
     sample_size:     int  = 500_000,
     tune:            bool = False,
     promote_to_prod: bool = False,
