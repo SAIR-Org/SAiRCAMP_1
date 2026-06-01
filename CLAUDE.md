@@ -158,7 +158,7 @@ Lives in `6-Full-System/`. Not started.
 
 ```
 6-Full-System/
-├── retrain/     champion/challenger gate (from 5-Deploy-Offline/retrain/)
+├── retrain/     champion/challenger gate (built+tested in Module 5, lives here in Module 6)
 └── compose/     full docker-compose: online API + batch + dashboard + retrain trigger
 ```
 
