@@ -2,14 +2,14 @@ services:
 
   batch:
     build:
-      context: ../        # mlops-zoomcamp/ — needs 4-Deploy-Online/shared/ + 5-Deploy-Offline/batch/
+      context: ../
       dockerfile: 5-Deploy-Offline/batch/Dockerfile
     volumes:
-      - ../4-Deploy-Online/pipeline:/app/pipeline   # MLflow registry (same as online API)
-      - ./batch:/app/data                           # predictions/ and batch_results.db written here
+      - ../4-Deploy-Online/pipeline:/app/pipeline   # MLflow registry
+      - ./batch:/app/data                           # predictions/ and batch_results.db
     environment:
-      - MLFLOW_ARTIFACTS_ROOT=/app/pipeline         # remap host artifact paths (see DOCKER_DEBUGGING.md)
-      - BATCH_DATA_DIR=/app/data                    # write outputs to bind-mounted batch/ dir
+      - MLFLOW_ARTIFACTS_ROOT=/app/pipeline
+      - BATCH_DATA_DIR=/app/data
     ports:
       - "8001:8001"
     healthcheck:
@@ -19,3 +19,18 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+
+  dashboard:
+    build:
+      context: ../
+      dockerfile: 5-Deploy-Offline/dashboard/Dockerfile
+    volumes:
+      - ./batch:/app/data                           # reads batch_results.db and predictions/
+    environment:
+      - BATCH_API_URL=http://batch:8001             # service-to-service inside Docker network
+      - BATCH_DATA_DIR=/app/data
+    ports:
+      - "8501:8501"
+    depends_on:
+      batch:
+        condition: service_healthy
