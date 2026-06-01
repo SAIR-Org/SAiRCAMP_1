@@ -10,7 +10,7 @@ Teaches: schema migration, MLflow registry, online serving with FastAPI, Docker 
 | Guide | Covers |
 |-------|--------|
 | [MLFLOW_REGISTRY.md](MLFLOW_REGISTRY.md) | Registry vs tracking, aliases, loading by URI, preprocessor artifact, training-serving skew |
-| [DOCKER_FOR_ML.md](DOCKER_FOR_ML.md) | Images vs containers, volumes, shared state, build context, profiles |
+| [DOCKER_FOR_ML.md](DOCKER_FOR_ML.md) | Images vs containers, volumes, shared state, build context |
 | [FASTAPI.md](FASTAPI.md) | Online vs batch serving, lifespan, Pydantic validation, global state, health checks |
 
 ---
@@ -20,24 +20,33 @@ Teaches: schema migration, MLflow registry, online serving with FastAPI, Docker 
 ```
 4-Deploy-Online/
 ├── shared/      Feature engineering — single source of truth for pipeline and api
-├── pipeline/    Train on 2019 TLC data, register @champion in MLflow              ✅
-└── api/         FastAPI online serving, load @champion from registry               ✅
+├── pipeline/    Train on 2019 TLC data, register @champion in MLflow   (runs locally)
+└── api/         FastAPI online serving, load @champion from registry    (runs in Docker)
 ```
 
-Each component shares nothing except the MLflow model URI:
+**Architectural separation — training vs serving:**
+
+| | Pipeline (training) | API (serving) |
+|---|---|---|
+| **Where it runs** | Locally | Docker |
+| **Why** | Prefect UI visibility, iterative development | Reproducible deployment |
+| **Trigger** | Developer runs manually | `docker compose up` |
+| **Output** | `@champion` in MLflow registry | Predictions via HTTP |
+
+The pipeline registers the model locally. The API reads from the same local MLflow registry.
+They share state through the filesystem, not through Docker volumes.
+
+Each component shares nothing at runtime except the MLflow model URI:
 ```
 models:/trip_duration_model@champion
 ```
-
-**What comes next:** `5-Deploy-Offline/` — batch scoring, drift monitoring,
-champion/challenger retraining, Streamlit dashboard.
 
 ---
 
 ## Why This Module Uses Different Data
 
-Modules 1–3 use a static Kaggle snapshot of 2016 NYC taxi data. That works for learning
-the tools. Module 4 deliberately breaks from it — and that break is the first lesson.
+Modules 1–3 use a static Kaggle snapshot of 2016 NYC taxi data. Module 4 deliberately
+breaks from it — and that break is the first lesson.
 
 **The schema changed:**
 
@@ -56,9 +65,8 @@ RatecodeID             ✅             RatecodeID             ✅
 payment_type           ✅             payment_type           ✅
 ```
 
-NYC TLC replaced GPS coordinates with zone IDs in 2017. There are 265 zones covering
-all NYC boroughs. Zone IDs are better features for tree models — they encode
-neighborhood semantics directly instead of requiring the model to learn them from coordinates.
+NYC TLC replaced GPS coordinates with zone IDs in 2017. Zone IDs are better features
+for tree models — they encode neighborhood semantics directly.
 
 **The feature engineering changed too:**
 
@@ -73,11 +81,9 @@ REMOVED (lat/lon no longer exists):       ADDED (zone ID equivalents):
 TOTAL: 19 features (Modules 1–3)  →  23 features (Module 4)
 ```
 
-**The point:** data sources change in production. A model trained on 2016 data
-cannot be deployed against 2019 data without a migration. Module 4 shows how to handle
-that — new data source, new features, same problem, same pipeline structure.
-
-Modules 1–3 are left untouched. Students can see both versions side by side.
+**The point:** data sources change in production. A model trained on 2016 data cannot be
+deployed against 2019 data without a migration. Modules 1–3 are left untouched so students
+see both versions side by side.
 
 ---
 
@@ -95,7 +101,7 @@ Training data: 2019, quarterly sample (Jan/Apr/Jul/Oct), 500k rows.
 ## Shared Code
 
 `shared/feature_engineering.py` is the single source of truth for feature engineering —
-used by both `pipeline/` at training time and `api/` at serving time.
+imported by both `pipeline/` at training time and `api/` at serving time.
 
 - `TripFeatureEngineer` — zone ID features, centroid distances, temporal features (23 total)
 - `OutlierHandler` — IQR-based clipping fitted on training data
@@ -108,44 +114,45 @@ loads the exact same transformation used during training.
 
 ## Quick Start
 
-### Option A — Docker (recommended)
-
-```bash
-cd 4-Deploy-Online
-
-# Step 1: train and register the model (runs once, exits when done)
-docker compose --profile train run --rm pipeline
-
-# Step 2: start the API
-docker compose up api
-```
-
-Swagger UI: `http://localhost:8000/docs`
-
-MLflow data (DB + artifacts) is stored in a named Docker volume `mlflow_store`,
-shared between the pipeline and API containers.
-
----
-
-### Option B — Local
+### Step 1 — Train the model (local)
 
 ```bash
 # From repo root
 uv sync
 source .venv/bin/activate
 
-# Step 1: train
 cd 4-Deploy-Online/pipeline
 python main.py --sample-size 500000 --tune --promote
+```
 
-# Step 2: serve
-cd ../api
-uvicorn main:app --port 8000
+Trains 6 models, picks XGBoost (R²=0.817, MAE=3.07 min), registers as `@champion`,
+saves preprocessor artifact to MLflow. Takes ~25 min.
+
+Quick smoke test: `python main.py --sample-size 50000 --no-tune` (~3 min)
+
+View results:
+```bash
+mlflow ui --backend-store-uri sqlite:///mlflow_trip_duration.db
+# http://127.0.0.1:5000
 ```
 
 ---
 
-### Test a prediction
+### Step 2 — Serve the API (Docker)
+
+The API container reads from the local MLflow registry via a bind-mounted volume.
+Mount the pipeline directory so the container can see the MLflow DB and artifacts:
+
+```bash
+cd 4-Deploy-Online
+docker compose up api
+```
+
+Swagger UI: `http://localhost:8000/docs`
+
+---
+
+### Step 3 — Test a prediction
 
 ```bash
 curl -X POST http://localhost:8000/predict \
@@ -185,7 +192,7 @@ Prefect-orchestrated training pipeline — 9 steps, 6 models, MLflow tracking.
 | 5 | Train 6 models (Linear, Ridge, Lasso, RF, GBM, XGBoost) |
 | 6 | Tune best model with HalvingRandomSearchCV |
 | 7 | Evaluate on held-out test set |
-| 8 | Register in MLflow, promote to `@champion`, save preprocessor |
+| 8 | Register in MLflow, promote to `@champion`, save preprocessor + training stats |
 | 9 | Log feature importances |
 
 **Best model:** XGBoost — Test R² **0.817**, MAE **3.07 min**
@@ -200,18 +207,11 @@ Prefect-orchestrated training pipeline — 9 steps, 6 models, MLflow tracking.
 | `centroid_distance_miles` | 0.047 |
 | `pickup_hour` | 0.033 |
 
-Run options:
-```bash
-python main.py --sample-size 50000 --no-tune          # quick smoke test (~3 min)
-python main.py --sample-size 500000 --tune --promote  # full run (~25 min)
-```
-
-View in MLflow UI:
-```bash
-cd 4-Deploy-Online/pipeline
-mlflow ui --backend-store-uri sqlite:///mlflow_trip_duration.db
-# http://127.0.0.1:5000
-```
+**Pipeline runs locally only.** Prefect's ephemeral server requires a dedicated server
+process to run in Docker. For Docker deployment of the pipeline, add a Prefect server
+service to `docker-compose.yml` and set `PREFECT_API_URL` accordingly. For course
+purposes, local execution with Prefect UI is the right pattern — training is a
+development-time activity, not a deployment artifact.
 
 ---
 

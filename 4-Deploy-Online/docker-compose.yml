@@ -1,25 +1,18 @@
 services:
 
-  pipeline:
-    build:
-      context: .
-      dockerfile: pipeline/Dockerfile
-    volumes:
-      - mlflow_store:/mlflow
-    environment:
-      - MLFLOW_TRACKING_URI=sqlite:////mlflow/mlflow_trip_duration.db
-      - MLFLOW_ARTIFACT_LOCATION=/mlflow/artifacts
-    profiles:
-      - train
-
   api:
     build:
       context: .
       dockerfile: api/Dockerfile
     volumes:
-      - mlflow_store:/mlflow
+      # Bind-mount the local pipeline directory so the API reads the same
+      # MLflow registry the pipeline writes to when run locally.
+      - ./pipeline:/app/pipeline
     environment:
-      - MLFLOW_TRACKING_URI=sqlite:////mlflow/mlflow_trip_duration.db
+      # Remap absolute host artifact paths to the container path at startup.
+      # The MLflow SQLite DB stores host-absolute paths; this tells model_loader
+      # to replace them with the container-relative path.
+      - MLFLOW_ARTIFACTS_ROOT=/app/pipeline
     ports:
       - "8000:8000"
     healthcheck:
@@ -28,6 +21,3 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
-
-volumes:
-  mlflow_store:

@@ -8,7 +8,7 @@ xgboost>=2.0.0
 
 # MLflow 3.x — required for alias-based registry (@champion/@challenger)
 # MLflow 2.x used stage transitions which were removed in 3.x
-mlflow>=3.0.0
+mlflow==3.13.0
 
 # Prefect 3.x orchestration
 prefect>=3.0.0

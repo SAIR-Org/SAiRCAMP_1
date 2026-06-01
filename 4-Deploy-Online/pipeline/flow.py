@@ -333,7 +333,7 @@ def evaluate_model(best_result, X_test, y_test, config):
 #   retrying avoids failing an otherwise successful pipeline run.
 # =============================================================================
 @task(name="register-model", retries=2, retry_delay_seconds=5)
-def register_model(best_result, test_metrics, promote_to_prod, config, preprocessor=None):
+def register_model(best_result, test_metrics, promote_to_prod, config, preprocessor=None, train_stats=None):
     """Register the best model in MLflow and transition to Staging."""
     logger = get_run_logger()
     logger.info("📦 Step 8: Model Registry")
@@ -398,6 +398,18 @@ def register_model(best_result, test_metrics, promote_to_prod, config, preproces
         with mlflow.start_run(run_id=v_run_id):
             mlflow.log_artifact(str(pkl), artifact_path="preprocessor")
         logger.info("✅ Preprocessor saved as MLflow artifact")
+
+    # Save training target stats so batch scorer can compute drift without re-downloading 2019 data
+    if version and train_stats is not None:
+        v_run_id = mlflow.MlflowClient().get_model_version(
+            config.mlflow.model_name, version
+        ).run_id
+        with mlflow.start_run(run_id=v_run_id):
+            mlflow.log_metrics({
+                'train_duration_mean': train_stats['mean'],
+                'train_duration_std':  train_stats['std'],
+            })
+        logger.info(f"✅ Training stats saved — mean: {train_stats['mean']:.2f} min, std: {train_stats['std']:.2f} min")
 
     registry.print_registry_status()
     return version
@@ -567,7 +579,8 @@ def trip_duration_pipeline(
     test_metrics = evaluate_model(best_result, X_test_p, y_test, config)
 
     # ── Step 8: Register in MLflow ────────────────────────────────────────────
-    model_version = register_model(best_result, test_metrics, promote_to_prod, config, pipeline)
+    train_stats = {'mean': float(np.mean(y_train)), 'std': float(np.std(y_train))}
+    model_version = register_model(best_result, test_metrics, promote_to_prod, config, pipeline, train_stats)
 
     # ── Step 9: Feature importance ────────────────────────────────────────────
     log_feature_importance(best_result, feature_names, model_version, config)
