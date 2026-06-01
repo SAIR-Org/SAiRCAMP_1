@@ -1,0 +1,58 @@
+services:
+
+  # ── Online serving (Module 4) ─────────────────────────────────────────────
+  api:
+    build:
+      context: ../4-Deploy-Online    # api/Dockerfile expects context = 4-Deploy-Online/
+      dockerfile: api/Dockerfile
+    volumes:
+      - ../4-Deploy-Online/pipeline:/app/pipeline
+    environment:
+      - MLFLOW_ARTIFACTS_ROOT=/app/pipeline
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ── Offline batch scoring (Module 5) ─────────────────────────────────────
+  batch:
+    build:
+      context: ../
+      dockerfile: 5-Deploy-Offline/batch/Dockerfile
+    volumes:
+      - ../4-Deploy-Online/pipeline:/app/pipeline
+      - ../5-Deploy-Offline/batch:/app/data
+    environment:
+      - MLFLOW_ARTIFACTS_ROOT=/app/pipeline
+      - BATCH_DATA_DIR=/app/data
+    ports:
+      - "8001:8001"
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ── Unified dashboard (Module 6) ─────────────────────────────────────────
+  dashboard:
+    build:
+      context: ../
+      dockerfile: 6-Full-System/dashboard/Dockerfile
+    volumes:
+      - ../5-Deploy-Offline/batch:/app/data
+    environment:
+      - ONLINE_API_URL=http://api:8000       # service-to-service (Docker network)
+      - BATCH_API_URL=http://batch:8001
+      - BATCH_DATA_DIR=/app/data
+    ports:
+      - "8501:8501"
+    depends_on:
+      - api
+      - batch

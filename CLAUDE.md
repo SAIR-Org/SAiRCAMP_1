@@ -53,10 +53,10 @@ Module 5 — 5-Deploy-Offline               (DONE)
   Tools: Prefect + FastAPI + Streamlit + Docker
   Note: NO retrain here — retrain lives in Module 6
 
-Module 6 — 6-Full-System                  (NEXT — not started)
-  Teaches: online + offline combined, champion/challenger retrain, auto-promotion
+Module 6 — 6-Full-System                  (DONE)
+  Teaches: online + offline combined, unified dashboard, manual retrain workflow
   Combines Module 4 (online API) + Module 5 (batch/monitoring) into one system
-  Adds: retrain flow, drift-triggered retraining, auto-promotion gate
+  One command: docker compose up → api (8000) + batch (8001) + dashboard (8501)
 ```
 
 ---
@@ -152,26 +152,43 @@ It lives in Module 6 where online + offline are combined.
 
 ---
 
-## Module 6 — The Plan (NEXT)
+## Module 6 — What Was Built (DONE)
 
-Lives in `6-Full-System/`. Not started.
+Lives in `6-Full-System/`. Complete integrated system.
 
 ```
 6-Full-System/
-├── retrain/     champion/challenger gate (built+tested in Module 5, lives here in Module 6)
-└── compose/     full docker-compose: online API + batch + dashboard + retrain trigger
+├── docker-compose.yml   api (8000) + batch (8001) + dashboard (8501)
+├── README.md
+└── dashboard/
+    ├── app.py           4 tabs: predict + batch + drift + system/retrain
+    ├── Dockerfile
+    └── requirements.txt
 ```
 
-**The story:**
-```
-Online API serves real-time predictions (Module 4 API)
-Batch scores historical data monthly (Module 5 batch)
-Monitoring detects drift (Module 5 monitoring)
-Drift alert → triggers retrain (champion/challenger)
-New champion → online API reloads automatically
+**Key decisions:**
+- Manual retrain (Option A) — monitoring alerts, human decides when to retrain
+- Reuses Module 4 and 5 Dockerfiles — no duplication
+- Dashboard shows both online predictions + batch results in one place
+- Retrain = run pipeline with `--train-years 2019,2020` + `docker compose restart api`
+- Champion/challenger gate: new model must beat champion on 2020-06 holdout
+
+**Run the full system:**
+```bash
+cd 6-Full-System
+docker compose up
+# api: http://localhost:8000
+# batch: http://localhost:8001
+# dashboard: http://localhost:8501
 ```
 
-The retrain code is already built and tested. Module 6 wires it into the full system.
+**The complete MLOps lifecycle:**
+```
+Train (pipeline) → Register @champion → Serve online (api) →
+Score offline (batch) → Detect drift (monitoring) →
+Human decides to retrain → Train @challenger →
+Compare on holdout → Promote if better → api serves new model
+```
 
 ---
 
@@ -206,7 +223,7 @@ mlops-zoomcamp/
 │   ├── monitoring/
 │   ├── dashboard/
 │   └── docker-compose.yml
-├── 6-Full-System/                  NEXT
+├── 6-Full-System/                  DONE
 └── experiments/
     └── olist_delivery/             rejected
 ```
