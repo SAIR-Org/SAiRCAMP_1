@@ -1,0 +1,8 @@
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/.venv
+**/mlruns
+**/mlflow_*.db
+**/.env
+**/batch_results.db

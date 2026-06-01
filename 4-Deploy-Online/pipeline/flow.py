@@ -19,10 +19,12 @@ Usage:
   prefect server start   # optional UI at http://127.0.0.1:4200
 """
 
+import os
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent))         # pipeline/ → config, src
+sys.path.insert(0, str(Path(__file__).parent.parent))  # 4-Deploy-Online/ → shared
 
 import mlflow
 import numpy as np
@@ -40,7 +42,7 @@ from prefect import flow, task, get_run_logger
 from config.config import load_config
 from src.data.data_acquisition import DataAcquisition
 from src.data.data_preprocessing import DataPreprocessor
-from src.features.feature_engineering import build_preprocessor
+from shared.feature_engineering import build_preprocessor
 from src.models.model_training import ModelTrainer, build_model_portfolio
 from src.models.model_registry import ModelRegistry
 
@@ -331,7 +333,7 @@ def evaluate_model(best_result, X_test, y_test, config):
 #   retrying avoids failing an otherwise successful pipeline run.
 # =============================================================================
 @task(name="register-model", retries=2, retry_delay_seconds=5)
-def register_model(best_result, test_metrics, promote_to_prod, config):
+def register_model(best_result, test_metrics, promote_to_prod, config, preprocessor=None):
     """Register the best model in MLflow and transition to Staging."""
     logger = get_run_logger()
     logger.info("📦 Step 8: Model Registry")
@@ -381,6 +383,21 @@ def register_model(best_result, test_metrics, promote_to_prod, config):
                 mlflow.set_tag('final_model', 'true')
                 mlflow.set_tag('deployment_ready', 'true')
             logger.info(f"   ✓ Test metrics re-logged to v{version} run")
+
+    # Save the fitted preprocessor so the API can load it at serving time
+    if version and preprocessor is not None:
+        import pickle, tempfile
+        from pathlib import Path as _Path
+        tmp = _Path(tempfile.mkdtemp())
+        pkl = tmp / "preprocessor.pkl"
+        with open(pkl, "wb") as f:
+            pickle.dump(preprocessor, f)
+        v_run_id = mlflow.MlflowClient().get_model_version(
+            config.mlflow.model_name, version
+        ).run_id
+        with mlflow.start_run(run_id=v_run_id):
+            mlflow.log_artifact(str(pkl), artifact_path="preprocessor")
+        logger.info("✅ Preprocessor saved as MLflow artifact")
 
     registry.print_registry_status()
     return version
@@ -486,6 +503,15 @@ def trip_duration_pipeline(
     # Setting it in the flow before any tasks ensures every task that calls
     # mlflow.start_run() uses the right experiment.
     mlflow.set_tracking_uri(config.mlflow.tracking_uri)
+
+    # In Docker, MLFLOW_ARTIFACT_LOCATION points artifacts to the shared volume.
+    # Locally this env var is unset and MLflow uses its default (./mlruns/).
+    artifact_location = os.getenv("MLFLOW_ARTIFACT_LOCATION")
+    if artifact_location:
+        try:
+            mlflow.create_experiment(config.mlflow.experiment_name, artifact_location=artifact_location)
+        except Exception:
+            pass  # experiment already exists
     mlflow.set_experiment(config.mlflow.experiment_name)
 
     logger.info("=" * 60)
@@ -541,7 +567,7 @@ def trip_duration_pipeline(
     test_metrics = evaluate_model(best_result, X_test_p, y_test, config)
 
     # ── Step 8: Register in MLflow ────────────────────────────────────────────
-    model_version = register_model(best_result, test_metrics, promote_to_prod, config)
+    model_version = register_model(best_result, test_metrics, promote_to_prod, config, pipeline)
 
     # ── Step 9: Feature importance ────────────────────────────────────────────
     log_feature_importance(best_result, feature_names, model_version, config)

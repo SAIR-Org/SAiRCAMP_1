@@ -71,7 +71,7 @@ model = mlflow.sklearn.load_model("models:/trip_duration_model@champion")
 
 `MLFLOW_TRACKING_URI` is an absolute path computed from `config.py`'s location:
 ```
-sqlite:////home/silva/.../4-Deployment/pipeline/mlflow_trip_duration.db
+sqlite:////home/silva/.../4-Deploy-Online/pipeline/mlflow_trip_duration.db
 ```
 
 This means `api/`, `batch/`, and `monitoring/` can all import this constant and point to the same database regardless of which directory they're run from.
@@ -100,7 +100,7 @@ client.set_registered_model_alias("trip_duration_model", "champion", "16")
 ## Database
 
 ```
-Location:  4-Deployment/pipeline/mlflow_trip_duration.db
+Location:  4-Deploy-Online/pipeline/mlflow_trip_duration.db
 Format:    SQLite
 Shared by: pipeline/, api/, batch/, monitoring/, retrain/
 ```

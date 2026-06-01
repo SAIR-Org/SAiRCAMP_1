@@ -1,0 +1,33 @@
+services:
+
+  pipeline:
+    build:
+      context: .
+      dockerfile: pipeline/Dockerfile
+    volumes:
+      - mlflow_store:/mlflow
+    environment:
+      - MLFLOW_TRACKING_URI=sqlite:////mlflow/mlflow_trip_duration.db
+      - MLFLOW_ARTIFACT_LOCATION=/mlflow/artifacts
+    profiles:
+      - train
+
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    volumes:
+      - mlflow_store:/mlflow
+    environment:
+      - MLFLOW_TRACKING_URI=sqlite:////mlflow/mlflow_trip_duration.db
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  mlflow_store:

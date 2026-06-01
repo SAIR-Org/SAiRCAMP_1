@@ -101,7 +101,7 @@ class ModelConfig:
 # Absolute path anchored to pipeline/ — all downstream components share this URI.
 _PIPELINE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _MLFLOW_DB_PATH = os.path.join(_PIPELINE_DIR, "mlflow_trip_duration.db")
-MLFLOW_TRACKING_URI = f"sqlite:///{_MLFLOW_DB_PATH}"
+MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", f"sqlite:///{_MLFLOW_DB_PATH}")
 
 
 @dataclass

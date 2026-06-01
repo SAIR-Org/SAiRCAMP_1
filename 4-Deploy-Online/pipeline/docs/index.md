@@ -1,6 +1,6 @@
 # Pipeline v2 — Documentation Index
 
-Reference docs for `4-Deployment/pipeline/`. Each file covers one component in depth: the decisions made, the why behind them, and how each piece connects to the next.
+Reference docs for `4-Deploy-Online/pipeline/`. Each file covers one component in depth: the decisions made, the why behind them, and how each piece connects to the next.
 
 ---
 
