@@ -51,26 +51,28 @@ class DataAcquisition:
 
     def run(self) -> pd.DataFrame:
         """
-        Download and combine all configured months.
+        Download and combine all configured years and months.
 
-        Downloads each month, samples per-month, then combines.
+        Supports multi-year retraining (e.g. train_years=[2019, 2020]).
         Peak memory = one full month + accumulated samples.
         """
-        logger.info(f"📥 Downloading {self.config.train_year} TLC data")
-        logger.info(f"   Months  : {self.config.train_months}")
-        logger.info(f"   Per month: {self.config.samples_per_month:,} rows")
-        logger.info(f"   Total   : ~{self.config.sample_size:,} rows")
+        total_periods = len(self.config.train_years) * len(self.config.train_months)
+        logger.info(f"📥 Downloading TLC data: years={self.config.train_years}")
+        logger.info(f"   Months    : {self.config.train_months}")
+        logger.info(f"   Per period: {self.config.samples_per_month:,} rows")
+        logger.info(f"   Total     : ~{self.config.sample_size:,} rows "
+                    f"({total_periods} periods)")
 
         chunks = []
-        for month in self.config.train_months:
-            df_month = self.download_month(self.config.train_year, month)
-            df_sampled = self.sample_month(df_month, self.config.train_year, month)
-            chunks.append(df_sampled)
-            del df_month  # free full month immediately
+        for year in self.config.train_years:
+            for month in self.config.train_months:
+                df_month   = self.download_month(year, month)
+                df_sampled = self.sample_month(df_month, year, month)
+                chunks.append(df_sampled)
+                del df_month
 
         df = pd.concat(chunks, ignore_index=True)
-        logger.info(f"✅ Combined: {len(df):,} rows from "
-                    f"{len(self.config.train_months)} months")
+        logger.info(f"✅ Combined: {len(df):,} rows from {total_periods} periods")
 
         if not self.validate_data(df):
             raise ValueError("Data validation failed — missing required columns")

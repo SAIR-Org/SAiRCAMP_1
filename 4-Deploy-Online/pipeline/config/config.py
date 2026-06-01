@@ -12,8 +12,8 @@ class DataConfig:
         "yellow_tripdata_{year}-{month:02d}.parquet"
     )
 
-    # 2019 quarterly sample (Jan/Apr/Jul/Oct = seasonal coverage)
-    train_year: int = 2019
+    # Training years + months — supports multi-year retraining
+    train_years: List[int] = field(default_factory=lambda: [2019])
     train_months: List[int] = field(default_factory=lambda: [1, 4, 7, 10])
 
     # Columns to fetch from parquet (avoids downloading unused columns)
@@ -127,9 +127,8 @@ class Config:
 def load_config() -> Config:
     """Load configuration with optional environment variable overrides."""
     config = Config()
-    config.data.samples_per_month = (
-        config.data.sample_size // len(config.data.train_months)
-    )
+    total_months = len(config.data.train_years) * len(config.data.train_months)
+    config.data.samples_per_month = config.data.sample_size // total_months
 
     if os.getenv('RANDOM_STATE'):
         config.model.random_state = int(os.getenv('RANDOM_STATE'))

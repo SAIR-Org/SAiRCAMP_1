@@ -486,7 +486,8 @@ def trip_duration_pipeline(
     sample_size: int = 200000,
     tune: bool = True,
     promote_to_prod: bool = False,
-    experiment_name: Optional[str] = None
+    experiment_name: Optional[str] = None,
+    train_years: Optional[list] = None,
 ):
     """
     End-to-end ML pipeline for trip duration prediction.
@@ -506,7 +507,10 @@ def trip_duration_pipeline(
     # ── Load and apply config ─────────────────────────────────────────────────
     config = load_config()
     config.data.sample_size = sample_size
-    config.data.samples_per_month = sample_size // len(config.data.train_months)
+    if train_years:
+        config.data.train_years = train_years
+    total_months = len(config.data.train_years) * len(config.data.train_months)
+    config.data.samples_per_month = sample_size // total_months
     if experiment_name:
         config.mlflow.experiment_name = experiment_name
 
@@ -528,6 +532,7 @@ def trip_duration_pipeline(
 
     logger.info("=" * 60)
     logger.info("TRIP DURATION PIPELINE — PREFECT ORCHESTRATED")
+    logger.info(f"  train_years    : {config.data.train_years}")
     logger.info(f"  sample_size    : {sample_size:,}")
     logger.info(f"  tune           : {tune}")
     logger.info(f"  promote_to_prod: {promote_to_prod}")
