@@ -1,5 +1,14 @@
 # Module 6 — Full System
 
+## Concept Guides
+
+| Guide | Covers |
+|-------|--------|
+| [SYSTEM_INTEGRATION.md](SYSTEM_INTEGRATION.md) | Docker networking, service-to-service URLs, shared state via bind mounts, health checks, startup order, environment variables |
+| [MLOPS_LIFECYCLE.md](MLOPS_LIFECYCLE.md) | The full picture — where every tool fits, the data story, what comes after this course |
+
+---
+
 Online + Offline running together. One command starts everything.
 
 ---
