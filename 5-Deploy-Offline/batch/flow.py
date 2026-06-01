@@ -1,11 +1,18 @@
 """
-Batch scoring flow — score TLC data for multiple time periods,
-detect model drift, write results to SQLite, log to MLflow.
+Batch scoring flow — two outputs from one run:
+
+  1. predictions/YYYY_MM.parquet  — per-trip predictions (batch deployment)
+     All scored trips with predicted and actual duration.
+     Use for: analytics, route analysis, what-if, A/B testing.
+
+  2. batch_results.db             — aggregate metrics per period (drift engine)
+     MAE, volume, drift ratio, alert flag.
+     Use for: monitoring, drift chart, alert system.
 
 Default periods tell the drift story:
-  2020-04: COVID lockdown — 97% volume collapse, MAE spikes 80%
-  2022-01: new normal    — model recovers
-  2024-01: fares +45%   — model stable
+  2020-04: COVID lockdown — 97% volume collapse, MAE 1.81x → ALERT
+  2022-01: new normal    — model recovers,        MAE 0.97x → OK
+  2024-01: fares +45%   — model stable,           MAE 1.02x → OK
 """
 import os
 import sys
@@ -39,7 +46,9 @@ MLFLOW_TRACKING_URI = os.getenv(
 )
 MODEL_NAME  = "trip_duration_model"
 MODEL_ALIAS = "champion"
-DB_PATH     = _BATCH_DIR / "batch_results.db"
+
+DB_PATH          = _BATCH_DIR / "batch_results.db"
+PREDICTIONS_DIR  = _BATCH_DIR / "predictions"
 
 TLC_URL = (
     "https://d37ci6vzurychx.cloudfront.net/trip-data/"
@@ -58,24 +67,25 @@ FEATURE_COLS = [
 
 # Alert thresholds (validated in batch_exploration.ipynb)
 MAE_RATIO_THRESHOLD = 1.5      # MAE > 1.5x training MAE → model degraded
-VOLUME_THRESHOLD    = 500_000  # < 500k trips/month → volume collapse
+VOLUME_THRESHOLD    = 500_000  # < 500k trips/month     → volume collapse
 
 
 # ── Database ──────────────────────────────────────────────────────────────────
 def _init_db():
+    PREDICTIONS_DIR.mkdir(exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS batch_results (
-            year        INTEGER,
-            month       INTEGER,
-            scored_at   TEXT,
-            total_rows  INTEGER,
-            n_scored    INTEGER,
-            mae         REAL,
-            mae_ratio   REAL,
-            target_mean REAL,
-            dist_mean   REAL,
-            alert       INTEGER,
+            year         INTEGER,
+            month        INTEGER,
+            scored_at    TEXT,
+            total_rows   INTEGER,
+            mae          REAL,
+            mae_ratio    REAL,
+            target_mean  REAL,
+            dist_mean    REAL,
+            alert        INTEGER,
+            predictions_path TEXT,
             PRIMARY KEY (year, month)
         )
     """)
@@ -95,7 +105,7 @@ def load_champion() -> dict:
     logger.info(f"Champion: v{mv.version}  run: {mv.run_id[:8]}")
 
     model = mlflow.sklearn.load_model(f"models:/{MODEL_NAME}@{MODEL_ALIAS}")
-    logger.info(f"Model loaded: {type(model).__name__}")
+    logger.info(f"Model: {type(model).__name__}")
 
     dst = tempfile.mkdtemp()
     art_path = mlflow.artifacts.download_artifacts(
@@ -107,26 +117,35 @@ def load_champion() -> dict:
         preprocessor = pickle.load(f)
     logger.info("Preprocessor loaded")
 
-    run     = client.get_run(mv.run_id)
+    run        = client.get_run(mv.run_id)
     train_mae  = float(run.data.metrics["test_mae"])
     train_mean = float(run.data.metrics["train_duration_mean"])
-    logger.info(f"Baseline — test MAE: {train_mae:.2f} min  duration mean: {train_mean:.2f} min")
-    logger.info(f"Alert if MAE > {train_mae * MAE_RATIO_THRESHOLD:.2f} min ({MAE_RATIO_THRESHOLD}x) "
+    logger.info(f"Baseline — test MAE: {train_mae:.2f} min  "
+                f"duration mean: {train_mean:.2f} min")
+    logger.info(f"Alert if MAE > {train_mae * MAE_RATIO_THRESHOLD:.2f} min "
                 f"or volume < {VOLUME_THRESHOLD:,}")
 
     return {
-        "model":       model,
+        "model":        model,
         "preprocessor": preprocessor,
-        "train_mae":   train_mae,
-        "train_mean":  train_mean,
-        "version":     mv.version,
-        "run_id":      mv.run_id,
+        "train_mae":    train_mae,
+        "train_mean":   train_mean,
+        "version":      mv.version,
+        "run_id":       mv.run_id,
     }
 
 
 @task(name="score-month", retries=1, retry_delay_seconds=30)
 def score_month(year: int, month: int, champion: dict) -> dict:
-    """Download TLC data for one month, score it, compute drift metrics."""
+    """
+    Download ALL trips for a month, score every one, save predictions.
+
+    Output 1 (batch deployment):
+        predictions/YYYY_MM.parquet — per-trip predictions for analytics
+
+    Output 2 (drift engine):
+        Returns aggregate metrics dict → written to batch_results.db
+    """
     logger = get_run_logger()
     logger.info(f"Downloading {year}-{month:02d}...")
 
@@ -143,21 +162,39 @@ def score_month(year: int, month: int, champion: dict) -> dict:
     df = df[(df["passenger_count"]       >= 1)  & (df["passenger_count"]        <= 6)]
 
     total_rows = len(df)
-    n_sample   = min(50_000, total_rows)
-    df_scored  = df.sample(n_sample, random_state=42) if total_rows > n_sample else df
-    logger.info(f"  {total_rows:,} valid rows — scoring {len(df_scored):,}")
+    logger.info(f"  {total_rows:,} valid trips — scoring all of them")
 
-    X      = champion["preprocessor"].transform(df_scored[FEATURE_COLS].copy())
+    # ── Score ALL trips (batch deployment) ────────────────────────────────────
+    X      = champion["preprocessor"].transform(df[FEATURE_COLS].copy())
     y_pred = champion["model"].predict(X)
-    y_true = df_scored["trip_duration_minutes"].values
 
-    mae         = float(mean_absolute_error(y_true, y_pred))
-    mae_ratio   = mae / champion["train_mae"]
+    # ── Build predictions DataFrame ───────────────────────────────────────────
+    predictions = pd.DataFrame({
+        "pickup_datetime":         df["tpep_pickup_datetime"].values,
+        "PULocationID":            df["PULocationID"].values,
+        "DOLocationID":            df["DOLocationID"].values,
+        "trip_distance":           df["trip_distance"].values,
+        "actual_duration_minutes": df["trip_duration_minutes"].values,
+        "predicted_duration_minutes": y_pred,
+        "error_minutes":           y_pred - df["trip_duration_minutes"].values,
+        "model_version":           champion["version"],
+    })
+
+    # ── Save predictions → Parquet (batch deployment artifact) ────────────────
+    parquet_path = PREDICTIONS_DIR / f"{year}_{month:02d}.parquet"
+    predictions.to_parquet(parquet_path, index=False)
+    logger.info(f"  Predictions saved → {parquet_path.name}  "
+                f"({parquet_path.stat().st_size / 1024 / 1024:.1f} MB)")
+
+    # ── Aggregate metrics (drift engine) ──────────────────────────────────────
+    y_true    = df["trip_duration_minutes"].values
+    mae       = float(mean_absolute_error(y_true, y_pred))
+    mae_ratio = mae / champion["train_mae"]
     target_mean = float(y_true.mean())
-    dist_mean   = float(df_scored["trip_distance"].mean())
+    dist_mean   = float(df["trip_distance"].mean())
 
-    mae_alert    = mae_ratio   > MAE_RATIO_THRESHOLD
-    volume_alert = total_rows  < VOLUME_THRESHOLD
+    mae_alert    = mae_ratio  > MAE_RATIO_THRESHOLD
+    volume_alert = total_rows < VOLUME_THRESHOLD
     alert        = mae_alert or volume_alert
 
     reasons = []
@@ -165,45 +202,48 @@ def score_month(year: int, month: int, champion: dict) -> dict:
     if volume_alert: reasons.append(f"volume collapse ({total_rows:,} trips)")
     status = f"⚠️  ALERT: {', '.join(reasons)}" if alert else "✅ OK"
 
-    logger.info(f"  MAE:          {mae:.2f} min  (ratio={mae_ratio:.2f}x)")
-    logger.info(f"  Duration mean: {target_mean:.2f} min  (train: {champion['train_mean']:.2f})")
-    logger.info(f"  Volume:       {total_rows:,} trips")
+    logger.info(f"  MAE:           {mae:.2f} min  (ratio={mae_ratio:.2f}x)")
+    logger.info(f"  Duration mean: {target_mean:.2f} min  "
+                f"(train: {champion['train_mean']:.2f})")
     logger.info(f"  {status}")
 
     return {
         "year": year, "month": month,
-        "scored_at":   datetime.utcnow().isoformat(),
-        "total_rows":  total_rows,
-        "n_scored":    len(df_scored),
-        "mae":         mae,
-        "mae_ratio":   mae_ratio,
-        "target_mean": target_mean,
-        "dist_mean":   dist_mean,
-        "alert":       int(alert),
+        "scored_at":        datetime.utcnow().isoformat(),
+        "total_rows":       total_rows,
+        "mae":              mae,
+        "mae_ratio":        mae_ratio,
+        "target_mean":      target_mean,
+        "dist_mean":        dist_mean,
+        "alert":            int(alert),
+        "predictions_path": str(parquet_path),
     }
 
 
 @task(name="save-result")
 def save_result(result: dict, champion: dict):
-    """Write result to SQLite and log to MLflow."""
+    """Write aggregate metrics to SQLite and log to MLflow."""
     logger = get_run_logger()
 
+    # ── SQLite (monitoring reads this) ────────────────────────────────────────
     conn = sqlite3.connect(DB_PATH)
     conn.execute("""
         INSERT OR REPLACE INTO batch_results
-        (year, month, scored_at, total_rows, n_scored,
-         mae, mae_ratio, target_mean, dist_mean, alert)
+        (year, month, scored_at, total_rows, mae, mae_ratio,
+         target_mean, dist_mean, alert, predictions_path)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
-        result["year"],        result["month"],      result["scored_at"],
-        result["total_rows"],  result["n_scored"],
-        result["mae"],         result["mae_ratio"],
-        result["target_mean"], result["dist_mean"],  result["alert"],
+        result["year"],         result["month"],
+        result["scored_at"],    result["total_rows"],
+        result["mae"],          result["mae_ratio"],
+        result["target_mean"],  result["dist_mean"],
+        result["alert"],        result["predictions_path"],
     ))
     conn.commit()
     conn.close()
-    logger.info(f"Saved {result['year']}-{result['month']:02d} → batch_results.db")
+    logger.info(f"Metrics saved → batch_results.db")
 
+    # ── MLflow (experiment tracking) ──────────────────────────────────────────
     with mlflow.start_run(run_name=f"batch_{result['year']}_{result['month']:02d}"):
         mlflow.set_tag("type", "batch_score")
         mlflow.set_tag("model_version", str(champion["version"]))
@@ -216,6 +256,7 @@ def save_result(result: dict, champion: dict):
             "total_rows":  float(result["total_rows"]),
             "alert":       float(result["alert"]),
         })
+        mlflow.log_artifact(result["predictions_path"], artifact_path="predictions")
 
 
 # ── Flow ──────────────────────────────────────────────────────────────────────
@@ -225,12 +266,15 @@ def batch_score_flow(
     experiment_name: str = "batch_scoring",
 ):
     """
-    Score TLC data for multiple time periods and detect model drift.
+    Batch scoring flow — two outputs per period:
 
-    Default periods tell the drift story:
-      (2020, 4) — COVID lockdown: 97% volume collapse, MAE 1.81x → alert
-      (2022, 1) — new normal:    model recovers, MAE 0.97x → OK
-      (2024, 1) — fares +45%:   model stable,   MAE 1.02x → OK
+    predictions/YYYY_MM.parquet   per-trip predictions (batch deployment)
+    batch_results.db              aggregate drift metrics (monitoring)
+
+    Default periods:
+      (2020, 4) — COVID: MAE 1.81x, volume 204k  → ALERT
+      (2022, 1) — normal: MAE 0.97x, volume 2.3M → OK
+      (2024, 1) — stable: MAE 1.02x, volume 2.7M → OK
     """
     logger = get_run_logger()
 
@@ -243,8 +287,9 @@ def batch_score_flow(
 
     logger.info("=" * 55)
     logger.info("BATCH SCORING — NYC TAXI TRIP DURATION")
-    logger.info(f"  Periods: {periods}")
-    logger.info(f"  DB:      {DB_PATH}")
+    logger.info(f"  Periods:  {periods}")
+    logger.info(f"  DB:       {DB_PATH.name}")
+    logger.info(f"  Output:   predictions/ (parquet) + batch_results.db")
     logger.info("=" * 55)
 
     champion = load_champion()
@@ -255,6 +300,7 @@ def batch_score_flow(
         save_result(result, champion)
         results.append(result)
 
+    # ── Summary ───────────────────────────────────────────────────────────────
     logger.info("")
     logger.info("=" * 55)
     logger.info("SUMMARY")
@@ -268,5 +314,7 @@ def batch_score_flow(
         )
     alerts = sum(r["alert"] for r in results)
     logger.info(f"\n  {alerts}/{len(results)} periods triggered alerts")
+    logger.info(f"  Predictions: {PREDICTIONS_DIR}/")
+    logger.info(f"  Metrics:     {DB_PATH.name}")
 
     return results
