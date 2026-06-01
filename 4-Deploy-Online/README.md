@@ -114,47 +114,79 @@ loads the exact same transformation used during training.
 
 ## Quick Start
 
-### Step 1 — Train the model (local)
+### Step 1 — Setup
 
 ```bash
 # From repo root
 uv sync
 source .venv/bin/activate
-
-cd 4-Deploy-Online/pipeline
-python main.py --sample-size 500000 --tune --promote
-```
-
-Trains 6 models, picks XGBoost (R²=0.817, MAE=3.07 min), registers as `@champion`,
-saves preprocessor artifact to MLflow. Takes ~25 min.
-
-Quick smoke test: `python main.py --sample-size 50000 --no-tune` (~3 min)
-
-View results:
-```bash
-mlflow ui --backend-store-uri sqlite:///mlflow_trip_duration.db
-# http://127.0.0.1:5000
 ```
 
 ---
 
-### Step 2 — Serve the API (Docker)
+### Step 2 — Train the model (local)
 
-The API container reads from the local MLflow registry via a bind-mounted volume.
-Mount the pipeline directory so the container can see the MLflow DB and artifacts:
+```bash
+cd 4-Deploy-Online/pipeline
+
+# Quick smoke test — 50k rows, no tuning (~3 min)
+python main.py --sample-size 50000 --no-tune
+
+# Full run — 500k rows, tuning, promotes to @champion (~25 min)
+python main.py --sample-size 500000 --tune --promote
+```
+
+Trains 6 models, picks XGBoost (R²=0.817, MAE=3.07 min), registers as `@champion`,
+saves preprocessor artifact to MLflow.
+
+**Optional — watch live in Prefect UI:**
+```bash
+# Terminal 1
+prefect server start
+# Open http://127.0.0.1:4200
+
+# Terminal 2
+python main.py --sample-size 500000 --tune --promote
+```
+
+**View results in MLflow UI:**
+```bash
+mlflow ui --backend-store-uri sqlite:///mlflow_trip_duration.db
+# Open http://127.0.0.1:5000
+```
+
+---
+
+### Step 3 — Build and start the API (Docker)
 
 ```bash
 cd 4-Deploy-Online
+
+# Build the image (first time, or after code changes)
+docker compose build api
+
+# Start the container
 docker compose up api
+
+# Watch startup logs (MLflow migrations take ~30s on first run)
+docker compose logs -f api
+# Wait for: "Application startup complete."
+
+# Stop when done
+docker compose down
 ```
 
 Swagger UI: `http://localhost:8000/docs`
 
 ---
 
-### Step 3 — Test a prediction
+### Step 4 — Test predictions
 
 ```bash
+# Health check
+curl http://localhost:8000/health
+
+# Standard trip — Midtown to Upper West Side, 2.5 miles, afternoon
 curl -X POST http://localhost:8000/predict \
   -H "Content-Type: application/json" \
   -d '{
@@ -167,14 +199,26 @@ curl -X POST http://localhost:8000/predict \
     "trip_distance": 2.5,
     "payment_type": 1
   }'
+
+# Airport trip — JFK to Midtown, 15 miles, morning rush
+curl -X POST http://localhost:8000/predict \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tpep_pickup_datetime": "2019-01-15T09:00:00",
+    "PULocationID": 132,
+    "DOLocationID": 161,
+    "passenger_count": 2,
+    "VendorID": 1,
+    "RatecodeID": 1,
+    "trip_distance": 15.2,
+    "payment_type": 1
+  }'
 ```
 
+Expected responses:
 ```json
-{
-  "predicted_duration_minutes": 19.93,
-  "model_version": "v6",
-  "model_alias": "champion"
-}
+{"predicted_duration_minutes": 19.93, "model_version": "v6", "model_alias": "champion"}
+{"predicted_duration_minutes": 48.07, "model_version": "v6", "model_alias": "champion"}
 ```
 
 ---
@@ -208,10 +252,9 @@ Prefect-orchestrated training pipeline — 9 steps, 6 models, MLflow tracking.
 | `pickup_hour` | 0.033 |
 
 **Pipeline runs locally only.** Prefect's ephemeral server requires a dedicated server
-process to run in Docker. For Docker deployment of the pipeline, add a Prefect server
-service to `docker-compose.yml` and set `PREFECT_API_URL` accordingly. For course
-purposes, local execution with Prefect UI is the right pattern — training is a
-development-time activity, not a deployment artifact.
+process to run in Docker. Training is a development-time activity — local execution
+with Prefect UI visibility is the right pattern. See `docs/DOCKER_DEBUGGING.md` for
+the full explanation of why the pipeline was removed from docker-compose.
 
 ---
 
