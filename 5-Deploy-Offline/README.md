@@ -1,5 +1,14 @@
 # Module 5 — Deploy Offline
 
+## Concept Guides
+
+| Guide | Covers |
+|-------|--------|
+| [BATCH_DEPLOYMENT.md](BATCH_DEPLOYMENT.md) | Online vs offline patterns, two-output design, async API, three-layer architecture |
+| [DRIFT_DETECTION.md](DRIFT_DETECTION.md) | What drift is, why σ formula failed, MAE ratio, volume signal, what the COVID data showed |
+
+---
+
 Batch deployment for analytics + drift monitoring.
 The same model from Module 4, used in a completely different way.
 
