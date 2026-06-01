@@ -1,0 +1,21 @@
+services:
+
+  batch:
+    build:
+      context: ../        # mlops-zoomcamp/ — needs 4-Deploy-Online/shared/ + 5-Deploy-Offline/batch/
+      dockerfile: 5-Deploy-Offline/batch/Dockerfile
+    volumes:
+      - ../4-Deploy-Online/pipeline:/app/pipeline   # MLflow registry (same as online API)
+      - ./batch:/app/data                           # predictions/ and batch_results.db written here
+    environment:
+      - MLFLOW_ARTIFACTS_ROOT=/app/pipeline         # remap host artifact paths (see DOCKER_DEBUGGING.md)
+      - BATCH_DATA_DIR=/app/data                    # write outputs to bind-mounted batch/ dir
+    ports:
+      - "8001:8001"
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s

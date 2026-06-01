@@ -5,3 +5,5 @@ xgboost>=2.0.0
 mlflow==3.13.0
 prefect>=3.0.0
 pyarrow>=14.0.0
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
