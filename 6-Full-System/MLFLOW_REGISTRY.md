@@ -264,14 +264,14 @@ The pickle references `shared.feature_engineering.TripFeatureEngineer`.
 Both processes have `shared/` on their Python path. The pickle loads in both contexts.
 
 ```
-4-Deploy-Online/
+6-Full-System/
 ├── shared/
 │   └── feature_engineering.py      ← single source of truth
 ├── pipeline/
 │   └── src/features/
 │       └── feature_engineering.py  ← one line: from shared.feature_engineering import *
 └── api/
-    └── model_loader.py              ← sys.path includes 4-Deploy-Online/ → shared importable
+    └── model_loader.py              ← sys.path includes 6-Full-System/ → shared importable
 ```
 
 This pattern — shared preprocessing code between training and serving — is a real
@@ -426,7 +426,7 @@ models:/MODEL_NAME@ALIAS            → alias (production-safe, use this)
 ### View the registry
 
 ```bash
-cd 4-Deploy-Online/pipeline
+cd 6-Full-System/pipeline
 mlflow ui --backend-store-uri sqlite:///mlflow_trip_duration.db
 # Open http://127.0.0.1:5000 → Models tab
 ```

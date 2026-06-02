@@ -259,17 +259,17 @@ all the files it's allowed to use in `COPY` instructions.
 services:
   api:
     build:
-      context: .        # build context = 4-Deploy-Online/ directory
+      context: .        # build context = 6-Full-System/ directory
       dockerfile: api/Dockerfile
 ```
 
-With `context: .` (the `4-Deploy-Online/` directory), the Dockerfile can `COPY`:
+With `context: .` (the `6-Full-System/` directory), the Dockerfile can `COPY`:
 - `shared/` ✅
 - `api/` ✅
 - `pipeline/` ✅
-- Files outside `4-Deploy-Online/` ❌
+- Files outside `6-Full-System/` ❌
 
-This is why `shared/` is at the `4-Deploy-Online/` level — the `api/Dockerfile`
+This is why `shared/` is at the `6-Full-System/` level — all Dockerfiles
 needs to copy it, so it must be in the build context.
 
 **`.dockerignore`** excludes files from the build context:
@@ -431,12 +431,12 @@ else:
 
 ```bash
 # Step 1: train locally (pipeline uses Prefect + MLflow)
-cd 4-Deploy-Online/pipeline
+cd 6-Full-System/pipeline
 python main.py --sample-size 500000 --tune --promote
 # → writes mlflow_trip_duration.db and mlruns/ to ./pipeline/
 
 # Step 2: build the API image
-cd 4-Deploy-Online
+cd 6-Full-System
 docker compose build api
 
 # Step 3: start the API

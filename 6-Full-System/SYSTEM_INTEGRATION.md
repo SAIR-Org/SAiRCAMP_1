@@ -135,7 +135,7 @@ In Module 6, the registry is accessed via **bind mount**:
 services:
   api:
     volumes:
-      - ../4-Deploy-Online/pipeline:/app/pipeline  ← host path → container path
+      - ./pipeline:/app/pipeline  ← host path → container path
     environment:
       - MLFLOW_ARTIFACTS_ROOT=/app/pipeline        ← remap absolute paths
 ```
@@ -149,7 +149,7 @@ contain host absolute paths (e.g., `/home/silva/.../pipeline/mlruns/...`).
 A named volume would be separate storage — the containers wouldn't see those files.
 A bind mount maps the actual local directory into the container — they see the same files.
 
-See `4-Deploy-Online/docs/DOCKER_DEBUGGING.md` for the full path-remapping story.
+See `4-Deploy-Online/docs/DOCKER_DEBUGGING.md (in the main repo)` for the full path-remapping story.
 
 ---
 
@@ -162,10 +162,10 @@ They share state via a bind mount on the **batch data directory**:
 services:
   batch:
     volumes:
-      - ../5-Deploy-Offline/batch:/app/data   ← batch writes here
+      - ./batch:/app/data   ← batch writes here
   dashboard:
     volumes:
-      - ../5-Deploy-Offline/batch:/app/data   ← dashboard reads here
+      - ./batch:/app/data   ← dashboard reads here
 ```
 
 Same host directory. Both containers see the same files.
@@ -281,21 +281,21 @@ docker compose up
 1. Docker creates a private network: 6-full-system_default
 
 2. Starts api container:
-   - Mounts ../4-Deploy-Online/pipeline → /app/pipeline
+   - Mounts ./pipeline → /app/pipeline
    - Sets MLFLOW_ARTIFACTS_ROOT=/app/pipeline
    - Runs: uvicorn main:app --host 0.0.0.0 --port 8000
    - lifespan: loads @champion model + preprocessor from MLflow
    - Healthcheck starts after 60s
 
 3. Starts batch container:
-   - Mounts ../4-Deploy-Online/pipeline → /app/pipeline
-   - Mounts ../5-Deploy-Offline/batch → /app/data
+   - Mounts ./pipeline → /app/pipeline
+   - Mounts ./batch → /app/data
    - Runs: uvicorn api:app --host 0.0.0.0 --port 8001
    - lifespan: initializes batch_results.db
    - Healthcheck starts after 30s
 
 4. Starts dashboard container:
-   - Mounts ../5-Deploy-Offline/batch → /app/data
+   - Mounts ./batch → /app/data
    - Sets ONLINE_API_URL=http://api:8000
    - Sets BATCH_API_URL=http://batch:8001
    - Runs: streamlit run app.py --port 8501

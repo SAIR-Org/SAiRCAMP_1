@@ -315,7 +315,7 @@ The other two are MLOps concerns beyond the scope of this module.
 
 ```bash
 # Run monitoring after batch scoring
-cd 5-Deploy-Offline/monitoring
+cd 6-Full-System/monitoring
 python monitor.py
 # Output: health report printed, drift_chart.png saved
 

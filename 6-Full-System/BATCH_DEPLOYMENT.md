@@ -288,12 +288,12 @@ _2020-04.parquet    →     download +           →
 
 ```bash
 # Local — Prefect flow (development)
-cd 5-Deploy-Offline/batch
+cd 6-Full-System/batch
 python main.py                              # default: 2020-04, 2022-01, 2024-01
 python main.py --periods 2020-01,2020-04   # custom periods
 
 # Docker — FastAPI (deployment)
-cd 5-Deploy-Offline
+cd 6-Full-System
 docker compose up
 
 # API calls

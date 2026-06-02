@@ -419,7 +419,7 @@ With this API:
 ### Run locally
 
 ```bash
-cd 4-Deploy-Online/api
+cd 6-Full-System/api
 uvicorn main:app --port 8000           # single worker
 uvicorn main:app --port 8000 --reload  # auto-reload on code changes (development)
 uvicorn main:app --port 8000 --workers 4  # multi-worker (production)
