@@ -88,8 +88,8 @@ col4.metric("Running jobs",  batch_h.get("running_jobs", "—") if batch_h else 
 
 st.divider()
 
-tab1, tab2, tab3, tab4 = st.tabs([
-    "🔮 Predict", "📊 Batch Results", "📈 Drift Chart", "🏥 System & Retrain"
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "🔮 Predict", "📊 Batch Results", "📈 Drift Chart", "🔬 Analytics", "🏥 System & Retrain"
 ])
 
 
@@ -277,9 +277,166 @@ with tab3:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# TAB 4 — System & Retrain
+# TAB 4 — Analytics (from prediction parquet files)
 # ══════════════════════════════════════════════════════════════════════════════
 with tab4:
+    st.header("Prediction Analytics")
+    st.caption("Per-trip predictions from the batch scorer — actual vs predicted, error patterns, worst routes")
+
+    parquets = sorted(PRED_DIR.glob("*.parquet")) if PRED_DIR.exists() else []
+
+    if not parquets:
+        st.info(
+            "No prediction files yet.  \n"
+            "Go to **Batch Results** tab and trigger scoring for at least one period."
+        )
+    else:
+        # Period selector
+        period_options = {f.stem.replace("_", "-"): f for f in parquets}
+        selected = st.selectbox(
+            "Select period to analyse",
+            list(period_options.keys()),
+            format_func=lambda x: f"{x}  ({period_options[x].stat().st_size / 1024 / 1024:.1f} MB)"
+        )
+        selected_file = period_options[selected]
+
+        @st.cache_data(ttl=60)
+        def load_predictions(path: str) -> pd.DataFrame:
+            df = pd.read_parquet(path)
+            # Sample for performance if large
+            if len(df) > 100_000:
+                df = df.sample(100_000, random_state=42)
+            df["abs_error"] = df["error_minutes"].abs()
+            df["distance_bucket"] = pd.cut(
+                df["trip_distance"],
+                bins=[0, 1, 2, 5, 10, 50],
+                labels=["<1 mi", "1-2 mi", "2-5 mi", "5-10 mi", ">10 mi"]
+            )
+            return df
+
+        df_pred = load_predictions(str(selected_file))
+
+        # Summary metrics
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Trips analysed",   f"{len(df_pred):,}")
+        col2.metric("MAE",              f"{df_pred['abs_error'].mean():.2f} min")
+        col3.metric("Within 2 min",     f"{(df_pred['abs_error'] <= 2).mean()*100:.1f}%")
+        col4.metric("Within 5 min",     f"{(df_pred['abs_error'] <= 5).mean()*100:.1f}%")
+
+        st.divider()
+
+        col1, col2 = st.columns(2)
+
+        # Chart 1 — Error distribution
+        with col1:
+            st.subheader("Prediction error distribution")
+            fig, ax = plt.subplots(figsize=(6, 4))
+            errors = df_pred["error_minutes"].clip(-15, 15)
+            ax.hist(errors, bins=60, color="steelblue", edgecolor="white", alpha=0.8)
+            ax.axvline(0, color="green", linestyle="--", linewidth=2, label="Perfect prediction")
+            ax.axvline(errors.mean(), color="red", linestyle="--", linewidth=1.5,
+                       label=f"Mean error: {errors.mean():.2f} min")
+            ax.set_xlabel("Error (minutes)  — negative = under-predicted")
+            ax.set_ylabel("Count")
+            ax.set_title(f"Error distribution — {selected}")
+            ax.legend(fontsize=8)
+            st.pyplot(fig)
+            plt.close()
+            st.caption("Negative = model predicted shorter than actual. Positive = predicted longer.")
+
+        # Chart 2 — MAE by distance bucket
+        with col2:
+            st.subheader("MAE by trip distance")
+            mae_by_dist = (
+                df_pred.groupby("distance_bucket", observed=True)["abs_error"]
+                .agg(["mean", "count"])
+                .reset_index()
+            )
+            fig, ax = plt.subplots(figsize=(6, 4))
+            bars = ax.bar(
+                mae_by_dist["distance_bucket"].astype(str),
+                mae_by_dist["mean"],
+                color="steelblue", edgecolor="white"
+            )
+            ax.axhline(df_pred["abs_error"].mean(), color="red", linestyle="--",
+                       linewidth=1.5, label=f"Overall MAE: {df_pred['abs_error'].mean():.2f} min")
+            for bar, count in zip(bars, mae_by_dist["count"]):
+                ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.05,
+                        f"n={count:,}", ha="center", va="bottom", fontsize=7)
+            ax.set_xlabel("Trip distance")
+            ax.set_ylabel("MAE (minutes)")
+            ax.set_title("Accuracy by trip length")
+            ax.legend(fontsize=8)
+            st.pyplot(fig)
+            plt.close()
+            st.caption("Longer trips are harder to predict — more variability in traffic and routing.")
+
+        st.divider()
+
+        col1, col2 = st.columns(2)
+
+        # Table — worst predicted routes
+        with col1:
+            st.subheader("Worst predicted routes (top 10)")
+            worst = (
+                df_pred.groupby(["PULocationID", "DOLocationID"])
+                .agg(mae=("abs_error", "mean"), trips=("abs_error", "count"))
+                .reset_index()
+                .query("trips >= 10")
+                .sort_values("mae", ascending=False)
+                .head(10)
+            )
+            worst["mae"] = worst["mae"].apply(lambda x: f"{x:.2f} min")
+            worst["trips"] = worst["trips"].apply(lambda x: f"{x:,}")
+            worst.columns = ["Pickup Zone", "Dropoff Zone", "MAE", "Trips"]
+            st.dataframe(worst, use_container_width=True, hide_index=True)
+            st.caption("Zones with ≥10 trips. High MAE = model struggles on these routes.")
+
+        # Table — best predicted routes
+        with col2:
+            st.subheader("Best predicted routes (top 10)")
+            best = (
+                df_pred.groupby(["PULocationID", "DOLocationID"])
+                .agg(mae=("abs_error", "mean"), trips=("abs_error", "count"))
+                .reset_index()
+                .query("trips >= 10")
+                .sort_values("mae", ascending=True)
+                .head(10)
+            )
+            best["mae"] = best["mae"].apply(lambda x: f"{x:.2f} min")
+            best["trips"] = best["trips"].apply(lambda x: f"{x:,}")
+            best.columns = ["Pickup Zone", "Dropoff Zone", "MAE", "Trips"]
+            st.dataframe(best, use_container_width=True, hide_index=True)
+            st.caption("Zones with ≥10 trips. Low MAE = model knows these routes well.")
+
+        st.divider()
+
+        # Chart 3 — Trip distance shift (feature drift)
+        st.subheader("Trip distance distribution (feature drift indicator)")
+        fig, ax = plt.subplots(figsize=(10, 3))
+        ax.hist(df_pred["trip_distance"].clip(0, 20), bins=60,
+                color="steelblue", edgecolor="white", alpha=0.8, label=selected)
+        ax.axvline(2.83, color="green", linestyle="--", linewidth=2,
+                   label="2019 training mean (2.83 mi)")
+        ax.axvline(df_pred["trip_distance"].mean(), color="orange", linestyle="--",
+                   linewidth=2,
+                   label=f"{selected} mean ({df_pred['trip_distance'].mean():.2f} mi)")
+        ax.set_xlabel("Trip distance (miles)")
+        ax.set_ylabel("Count")
+        ax.set_title(f"Trip distance distribution — {selected} vs 2019 training")
+        ax.legend(fontsize=9)
+        st.pyplot(fig)
+        plt.close()
+        st.caption(
+            "If the orange line (batch mean) drifts right of the green line (training mean), "
+            "the model is seeing longer trips than it was trained on — feature drift."
+        )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 5 — System & Retrain
+# ══════════════════════════════════════════════════════════════════════════════
+with tab5:
     st.header("System Health & Retrain")
 
     # ── Service health ────────────────────────────────────────────────────────
