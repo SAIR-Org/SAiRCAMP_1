@@ -9,15 +9,23 @@ Online serving + offline batch scoring + drift monitoring + unified dashboard.
 
 ## Concept Guides
 
+**Module 6 originals — new concepts introduced here:**
+
 | Guide | Covers |
 |-------|--------|
-| [MLFLOW_REGISTRY.md](MLFLOW_REGISTRY.md) | Registry vs tracking, aliases, loading by URI, preprocessor artifact |
-| [DOCKER_FOR_ML.md](DOCKER_FOR_ML.md) | Images, containers, volumes, bind mounts, build context |
-| [FASTAPI.md](FASTAPI.md) | Online vs batch serving, lifespan, Pydantic, async patterns |
-| [BATCH_DEPLOYMENT.md](BATCH_DEPLOYMENT.md) | Two-output design, async API, three-layer architecture |
-| [DRIFT_DETECTION.md](DRIFT_DETECTION.md) | MAE ratio, volume signal, why σ formula failed, COVID story |
-| [MLFLOW_SERVER.md](MLFLOW_SERVER.md) | Why SQLite broke in Docker, how the tracking server fixes it, VPS deployment |
-| [SYSTEM_INTEGRATION.md](SYSTEM_INTEGRATION.md) | Docker networking, shared state, health checks, env vars |
+| [SYSTEM_INTEGRATION.md](SYSTEM_INTEGRATION.md) | Docker networking, service-to-service URLs, shared state, health checks, startup order |
+| [MLFLOW_SERVER.md](MLFLOW_SERVER.md) | Why SQLite broke in Docker, the tracking server solution, what production adds |
+| [MLOPS_LIFECYCLE.md](MLOPS_LIFECYCLE.md) | The full picture — where every tool fits across all six modules |
+
+**Earlier modules — read these first:**
+
+| Guide | Module | Covers |
+|-------|--------|--------|
+| [MLFLOW_REGISTRY.md](../4-Deploy-Online/MLFLOW_REGISTRY.md) | 4 | Registry vs tracking, aliases, preprocessor artifact |
+| [DOCKER_FOR_ML.md](../4-Deploy-Online/DOCKER_FOR_ML.md) | 4 | Images, containers, volumes, bind mounts |
+| [FASTAPI.md](../4-Deploy-Online/FASTAPI.md) | 4 | Online serving, lifespan, Pydantic, health checks |
+| [BATCH_DEPLOYMENT.md](../5-Deploy-Offline/BATCH_DEPLOYMENT.md) | 5 | Batch vs online, two-output design, async API |
+| [DRIFT_DETECTION.md](../5-Deploy-Offline/DRIFT_DETECTION.md) | 5 | MAE ratio, volume signal, COVID drift story |
 | [MLOPS_LIFECYCLE.md](MLOPS_LIFECYCLE.md) | The full picture — where every tool fits across all modules |
 
 ---
