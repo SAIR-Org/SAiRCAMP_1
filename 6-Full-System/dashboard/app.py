@@ -31,7 +31,7 @@ import streamlit as st
 ONLINE_API  = os.getenv("ONLINE_API_URL", "http://localhost:8000")
 BATCH_API   = os.getenv("BATCH_API_URL",  "http://localhost:8001")
 _DATA_DIR   = Path(os.getenv("BATCH_DATA_DIR",
-              str(Path(__file__).parent.parent.parent / "5-Deploy-Offline" / "batch")))
+              str(Path(__file__).parent.parent / "batch")))
 BATCH_DB    = _DATA_DIR / "batch_results.db"
 PRED_DIR    = _DATA_DIR / "predictions"
 
@@ -353,13 +353,13 @@ the new model must genuinely outperform the old one before going live.
 
     st.markdown("**Run retrain in a terminal:**")
     st.code(
-        "cd 4-Deploy-Online/pipeline\n"
+        "cd 6-Full-System/pipeline\n"
         "python main.py \\\n"
         "  --train-years 2019,2020 \\\n"
         "  --sample-size 200000 \\\n"
         "  --no-tune\n\n"
         "# After retrain completes, restart the online API:\n"
-        "cd ../../6-Full-System\n"
+        "cd ..\n"
         "docker compose restart api",
         language="bash"
     )
