@@ -62,3 +62,4 @@ Thumbs.db
 # =========================
 .vscode/
 .idea/
+mlflow_store/

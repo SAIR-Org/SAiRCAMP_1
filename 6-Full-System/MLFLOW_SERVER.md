@@ -148,7 +148,51 @@ regardless of host path.
 
 ---
 
-## Part 3 — What Changed in Module 6
+## Part 3 — Implementation Status
+
+### What was attempted
+
+A full MLflow tracking server was implemented and tested in Module 6.
+Three blocking issues were encountered and documented here for students:
+
+**Issue 1 — PermissionError writing to `/mlflow`**
+When the pipeline runs locally and connects to `http://localhost:5000`, the server
+tells it to write artifacts to `/mlflow/artifacts`. On the host, `/mlflow` doesn't
+exist (it's a Docker-internal path), causing `PermissionError`.
+
+Fix attempted: `--serve-artifacts` with `--default-artifact-root mlflow-artifacts:/`
+to use HTTP proxy instead of direct filesystem writes.
+
+**Issue 2 — DNS rebinding security middleware blocking `http://mlflow:5000`**
+MLflow 3.x includes security middleware that rejects requests with Host headers
+that don't match its allowed list. Inside Docker, services connect via
+`http://mlflow:5000` — the hostname `mlflow` is rejected as a potential DNS
+rebinding attack.
+
+Fix attempted: `--allowed-hosts "*"` to allow all hosts.
+
+**Issue 3 — `mlflow-artifacts:/` URIs routing to `local_artifact_repo`**
+Even with `--serve-artifacts` enabled, MLflow's artifact resolution for
+`mlflow-artifacts:/` URIs fell back to `local_artifact_repo` instead of using
+the HTTP proxy (`MlflowArtifactsRepository`). This appears to be a behavior
+in MLflow 3.13.x where the `models:/m-xxx` (Logged Model) format is not
+properly proxied through the tracking server in all scenarios.
+
+**Result:** Module 6 reverts to the working bind mount + path remapping approach.
+The concepts in this document remain accurate — the server is the right production
+solution. The implementation gap is a MLflow 3.x configuration complexity, not a
+conceptual flaw.
+
+### What production does differently
+
+In production:
+1. A proper MLflow tracking server runs as a persistent service (PostgreSQL backend)
+2. Artifacts stored in S3/GCS — URLs, not local paths, work everywhere
+3. No DNS rebinding issues because services connect via proper domain names with TLS
+
+---
+
+## Part 4 — What Changed in Module 6
 
 ### docker-compose.yml
 

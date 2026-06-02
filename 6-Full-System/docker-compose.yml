@@ -1,42 +1,16 @@
 services:
 
-  # ── MLflow Tracking Server ────────────────────────────────────────────────
-  # The proper production solution.
-  # - Artifacts stored in a named volume (not host filesystem)
-  # - All services connect via HTTP (no bind mounts, no path remapping)
-  # - Works identically on any machine, any VPS
-  mlflow:
-    image: ghcr.io/mlflow/mlflow:latest
-    command: >
-      mlflow server
-      --host 0.0.0.0
-      --port 5000
-      --backend-store-uri sqlite:////mlflow/mlflow.db
-      --default-artifact-root /mlflow/artifacts
-    volumes:
-      - mlflow_data:/mlflow
-    ports:
-      - "5000:5000"
-    healthcheck:
-      test: ["CMD", "python", "-c",
-             "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
-
   # ── Online serving ────────────────────────────────────────────────────────
   api:
     build:
       context: .
       dockerfile: api/Dockerfile
+    volumes:
+      - ./pipeline:/app/pipeline     # MLflow DB + model artifacts
     environment:
-      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - MLFLOW_ARTIFACTS_ROOT=/app/pipeline
     ports:
       - "8000:8000"
-    depends_on:
-      mlflow:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c",
              "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
@@ -51,15 +25,13 @@ services:
       context: .
       dockerfile: batch/Dockerfile
     volumes:
-      - ./batch:/app/data    # predictions/ and batch_results.db — kept local for analytics
+      - ./pipeline:/app/pipeline     # MLflow DB + model artifacts (same as api)
+      - ./batch:/app/data            # predictions/ and batch_results.db
     environment:
-      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - MLFLOW_ARTIFACTS_ROOT=/app/pipeline
       - BATCH_DATA_DIR=/app/data
     ports:
       - "8001:8001"
-    depends_on:
-      mlflow:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c",
              "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
@@ -84,6 +56,3 @@ services:
     depends_on:
       - api
       - batch
-
-volumes:
-  mlflow_data:    # MLflow DB + all model artifacts — managed by Docker

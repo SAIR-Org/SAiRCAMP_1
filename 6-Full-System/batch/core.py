@@ -60,6 +60,36 @@ FEATURE_COLS = [
 MAE_RATIO_THRESHOLD = 1.5
 VOLUME_THRESHOLD    = 500_000
 
+_ARTIFACTS_ROOT = os.getenv("MLFLOW_ARTIFACTS_ROOT")
+
+
+def _remap(path: str) -> str:
+    if not _ARTIFACTS_ROOT or not path:
+        return path
+    idx = path.find("/mlruns/")
+    return _ARTIFACTS_ROOT + path[idx:] if idx >= 0 else path
+
+
+def _get_storage_location(version: str) -> str:
+    db_path = MLFLOW_TRACKING_URI.replace("sqlite:///", "")
+    conn = sqlite3.connect(db_path)
+    row = conn.execute(
+        "SELECT storage_location FROM model_versions WHERE name=? AND version=?",
+        (MODEL_NAME, version),
+    ).fetchone()
+    conn.close()
+    return row[0] if row else None
+
+
+def _get_artifact_uri(run_id: str) -> str:
+    db_path = MLFLOW_TRACKING_URI.replace("sqlite:///", "")
+    conn = sqlite3.connect(db_path)
+    row = conn.execute(
+        "SELECT artifact_uri FROM runs WHERE run_uuid=?", (run_id,)
+    ).fetchone()
+    conn.close()
+    return row[0] if row else None
+
 
 # ── Database ──────────────────────────────────────────────────────────────────
 def init_db():
@@ -91,17 +121,23 @@ def load_champion() -> dict:
     client = MlflowClient()
     mv     = client.get_model_version_by_alias(MODEL_NAME, MODEL_ALIAS)
 
-    # Server resolves the model URI and serves artifacts directly — no path hacks
-    model = mlflow.sklearn.load_model(f"models:/{MODEL_NAME}@{MODEL_ALIAS}")
-
-    dst      = tempfile.mkdtemp()
-    art_path = mlflow.artifacts.download_artifacts(
-        run_id=mv.run_id,
-        artifact_path="preprocessor/preprocessor.pkl",
-        dst_path=dst,
-    )
-    with open(art_path, "rb") as f:
-        preprocessor = pickle.load(f)
+    if _ARTIFACTS_ROOT and mv.source:
+        model = mlflow.sklearn.load_model(_remap(_get_storage_location(mv.version)))
+        preprocessor_path = (
+            Path(_remap(_get_artifact_uri(mv.run_id))) / "preprocessor" / "preprocessor.pkl"
+        )
+        with open(preprocessor_path, "rb") as f:
+            preprocessor = pickle.load(f)
+    else:
+        model = mlflow.sklearn.load_model(f"models:/{MODEL_NAME}@{MODEL_ALIAS}")
+        dst   = tempfile.mkdtemp()
+        art_path = mlflow.artifacts.download_artifacts(
+            run_id=mv.run_id,
+            artifact_path="preprocessor/preprocessor.pkl",
+            dst_path=dst,
+        )
+        with open(art_path, "rb") as f:
+            preprocessor = pickle.load(f)
 
     run        = client.get_run(mv.run_id)
     train_mae  = float(run.data.metrics["test_mae"])
