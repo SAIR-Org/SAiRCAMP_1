@@ -1,209 +1,215 @@
 # Module 6 — Full System
 
+Complete, standalone MLOps system for NYC Yellow Taxi trip duration prediction.
+Online serving + offline batch scoring + drift monitoring + unified dashboard.
+
+**This module is self-contained.** Everything needed to run the full system is here.
+
+---
+
 ## Concept Guides
 
 | Guide | Covers |
 |-------|--------|
-| [SYSTEM_INTEGRATION.md](SYSTEM_INTEGRATION.md) | Docker networking, service-to-service URLs, shared state via bind mounts, health checks, startup order, environment variables |
-| [MLOPS_LIFECYCLE.md](MLOPS_LIFECYCLE.md) | The full picture — where every tool fits, the data story, what comes after this course |
-
----
-
-Online + Offline running together. One command starts everything.
-
----
-
-## What This Module Is
-
-Modules 4 and 5 are standalone systems that share the same model registry but run independently.
-Module 6 wires them into one integrated system with a unified dashboard.
-
-```
-Module 4 alone:   Online API → real-time predictions
-Module 5 alone:   Batch scoring → analytics + drift monitoring
-Module 6:         Both running, dashboard shows everything in one place
-```
+| [MLFLOW_REGISTRY.md](MLFLOW_REGISTRY.md) | Registry vs tracking, aliases, loading by URI, preprocessor artifact |
+| [DOCKER_FOR_ML.md](DOCKER_FOR_ML.md) | Images, containers, volumes, bind mounts, build context |
+| [FASTAPI.md](FASTAPI.md) | Online vs batch serving, lifespan, Pydantic, async patterns |
+| [BATCH_DEPLOYMENT.md](BATCH_DEPLOYMENT.md) | Two-output design, async API, three-layer architecture |
+| [DRIFT_DETECTION.md](DRIFT_DETECTION.md) | MAE ratio, volume signal, why σ formula failed, COVID story |
+| [SYSTEM_INTEGRATION.md](SYSTEM_INTEGRATION.md) | Docker networking, shared state, health checks, env vars |
+| [MLOPS_LIFECYCLE.md](MLOPS_LIFECYCLE.md) | The full picture — where every tool fits across all modules |
 
 ---
 
 ## Architecture
 
 ```
-                    ┌─────────────────────────────────────┐
-                    │         Docker Network               │
-                    │                                      │
-User ──────────────▶│  api (port 8000)                    │
-                    │  FastAPI /predict                    │
-                    │  Loads @champion from MLflow         │
-                    │                                      │
-Analyst ───────────▶│  batch (port 8001)                  │
-                    │  FastAPI /score /results             │
-                    │  Scores all trips, detects drift     │
-                    │                                      │
-Dashboard ─────────▶│  dashboard (port 8501)              │
-                    │  4 tabs: predict + batch +           │
-                    │  drift chart + system/retrain        │
-                    └─────────────────────────────────────┘
-                              │         │
-                    ┌─────────┴──┐  ┌───┴──────────────────┐
-                    │  MLflow DB  │  │  predictions/         │
-                    │  (SQLite)   │  │  batch_results.db     │
-                    │  @champion  │  │  (bind mounted from   │
-                    │  @challenger│  │  5-Deploy-Offline/)   │
+6-Full-System/
+├── shared/          Feature engineering — single source of truth
+├── pipeline/        Train + register @champion (runs locally)
+├── api/             FastAPI online serving (Docker, port 8000)
+├── batch/           FastAPI batch scoring API (Docker, port 8001)
+├── monitoring/      Drift report + chart (runs locally)
+├── dashboard/       Streamlit unified UI (Docker, port 8501)
+└── docker-compose.yml
+```
+
+```
+                    ┌──────────────────────────────────────┐
+                    │         6-Full-System Docker Network  │
+                    │                                       │
+User ──────────────▶│  api:8000   /predict                 │
+                    │  Loads @champion from MLflow          │
+                    │                                       │
+Analytics ─────────▶│  batch:8001  /score /results         │
+                    │  Scores all trips, detects drift      │
+                    │                                       │
+Dashboard ─────────▶│  dashboard:8501                      │
+                    │  4 tabs: predict+batch+drift+system   │
+                    └──────────────────────────────────────┘
+                              │           │
+                    ┌─────────┴──┐  ┌─────┴────────────────┐
+                    │  pipeline/  │  │  batch/              │
+                    │  MLflow DB  │  │  batch_results.db    │
+                    │  mlruns/    │  │  predictions/*.parquet│
                     └─────────────┘  └──────────────────────┘
 ```
 
 ---
 
-## Quick Start
+## The Drift Story
 
-```bash
-cd 6-Full-System
+```
+Train on 2019 → deploy → batch score monthly → monitor
 
-# Start everything (api + batch + dashboard)
-docker compose up
-
-# Services:
-#   Online API:  http://localhost:8000/docs
-#   Batch API:   http://localhost:8001/docs
-#   Dashboard:   http://localhost:8501
-
-# Stop everything
-docker compose down
+2019:    7.7M trips   MAE 3.07 min  ← train here
+2020-04:  204k trips   MAE 5.55 min  ← COVID ⚠️ ALERT
+2022-01: 2.3M trips   MAE 3.00 min  ← recovery ✅
+2024-01: 2.7M trips   MAE 3.18 min  ← stable ✅
 ```
 
-First startup takes ~2-3 minutes — MLflow migrations + model loading.
+The 2020 COVID collapse proves why monitoring exists.
+Without it, the model silently serves 80% worse predictions for months.
 
 ---
 
-## The Dashboard — 4 Tabs
+## Quick Start
 
-### Tab 1 — Predict
-Live prediction via the online API.
-- Fill in trip details → click Predict
-- Returns duration in milliseconds
-- Shows which model version is serving
-
-### Tab 2 — Batch Results
-Scored periods with drift metrics.
-- Table: period, volume, MAE, ratio, alert status
-- Trigger new scoring via batch API (runs in background ~2 min)
-- Refreshes automatically
-
-### Tab 3 — Drift Chart
-MAE over time visualized.
-- 3 panels: MAE, ratio, volume — color-coded red/green
-- Alert details with recommended actions
-- The COVID shock (2020-04) visible as a red spike
-
-### Tab 4 — System & Retrain
-All services status + manual retrain instructions.
-- Health check for both APIs
-- Prediction file inventory with size
-- Exact command to run when retrain is needed
-
----
-
-## The Retrain Workflow (Manual — Option A)
-
-Monitoring detects drift → you decide to retrain → you run the command.
-
-**When to retrain:**
-- MAE ratio > 1.5x (model 50% worse than training)
-- Volume collapse detected
-- Both together (as in April 2020 COVID)
-
-**How to retrain:**
+### Step 1 — Setup
 
 ```bash
-# 1. Train challenger on expanded data (2019 + 2020)
-cd 4-Deploy-Online/pipeline
+# From repo root
+uv sync && source .venv/bin/activate
+
+cd 6-Full-System
+```
+
+### Step 2 — Train the model (local)
+
+```bash
+cd pipeline
+
+# Quick smoke test (~5 min)
+python main.py --sample-size 50000 --no-tune --promote
+
+# Full run (~25 min, better model)
+python main.py --sample-size 500000 --tune --promote
+```
+
+### Step 3 — Start the full system (Docker)
+
+```bash
+cd ..   # back to 6-Full-System/
+docker compose up
+```
+
+| Service | URL |
+|---------|-----|
+| Online API | http://localhost:8000/docs |
+| Batch API | http://localhost:8001/docs |
+| Dashboard | http://localhost:8501 |
+
+### Step 4 — Score batch periods
+
+```bash
+# Via API (background job)
+curl -X POST "http://localhost:8001/score?year=2020&month=4"
+curl -X POST "http://localhost:8001/score?year=2022&month=1"
+curl -X POST "http://localhost:8001/score?year=2024&month=1"
+
+# Or locally via Prefect flow
+cd batch && python main.py
+```
+
+### Step 5 — Run monitoring
+
+```bash
+cd monitoring
+python monitor.py
+```
+
+### Step 6 — View in dashboard
+
+Open http://localhost:8501 — drift chart shows the story.
+
+---
+
+## Retrain Workflow (Manual)
+
+When monitoring detects an alert (e.g., 2020-04 MAE ratio 1.81x):
+
+```bash
+# 1. Retrain on expanded data
+cd pipeline
 python main.py \
   --train-years 2019,2020 \
   --sample-size 200000 \
   --no-tune
-# → trains 6 models, picks best, registers as @challenger
-# → compares vs @champion on 2020-06 holdout
-# → promotes if challenger wins
 
-# 2. Restart the API to serve the new champion
-cd ../../6-Full-System
+# 2. Restart API to serve new @champion
+cd ..
 docker compose restart api
 
-# 3. Check the dashboard — Predict tab shows new model version
+# 3. Dashboard shows new model version in Predict tab
 ```
 
-**The champion/challenger gate:**
-- New model trains on 2019 + 2020 data
-- Evaluated on neutral 2020-06 holdout (not in training)
-- Promoted only if MAE improvement > 0.1 min
-- Without this gate, auto-retraining can silently make things worse
+**The champion/challenger gate:** new model evaluated on 2020-06 holdout.
+Promoted only if it beats the current champion by > 0.1 min.
 
-**What happened in this course:**
-```
-Champion v6:   MAE 4.59 min on 2020-06 holdout (trained on 2019 only)
-Challenger v12: MAE 3.22 min on 2020-06 holdout (trained on 2019 + 2020)
-Improvement: 1.37 min → v12 promoted to @champion automatically
+---
+
+## Pipeline Run Options
+
+```bash
+cd pipeline
+
+# Smoke test
+python main.py --sample-size 50000 --no-tune --promote
+
+# Full run
+python main.py --sample-size 500000 --tune --promote
+
+# Retrain on 2019 + 2020
+python main.py --train-years 2019,2020 --sample-size 200000 --no-tune
+
+# View MLflow
+mlflow ui --backend-store-uri sqlite:///mlflow_trip_duration.db
 ```
 
 ---
 
-## Services Reference
-
-### Online API (port 8000)
-| Endpoint | Description |
-|----------|-------------|
-| GET `/health` | Model version + alias |
-| POST `/predict` | Predict trip duration |
-| GET `/docs` | Swagger UI |
-
-### Batch API (port 8001)
-| Endpoint | Description |
-|----------|-------------|
-| GET `/health` | Status + summary |
-| POST `/score?year=Y&month=M` | Trigger scoring in background |
-| GET `/results` | All scored periods |
-| GET `/results/{year}/{month}` | One period |
-| GET `/predictions` | List parquet files |
-| GET `/running` | Jobs in progress |
-| GET `/docs` | Swagger UI |
-
----
-
-## What This Module Teaches
-
-**The full MLOps lifecycle in one system:**
-
-```
-Train → Register → Serve online → Score offline →
-Detect drift → Decide to retrain → Train challenger →
-Compare → Promote → Serve new model
-```
-
-Every step is visible. Every handoff is documented. The system is observable at every layer.
-
-**Why manual retraining (not automatic):**
-Automatic retraining without human review risks:
-- Training on corrupted data
-- Silent degradation (challenger wins on holdout, fails in production)
-- Loss of accountability (who decided to change the model?)
-
-The monitoring catches drift automatically. The retraining decision is human. This is the right balance for most production ML systems.
-
----
-
-## File Structure
+## Project Structure
 
 ```
 6-Full-System/
-├── docker-compose.yml   api + batch + dashboard services
-├── README.md
-└── dashboard/
-    ├── app.py           unified 4-tab Streamlit app
-    ├── Dockerfile
-    └── requirements.txt
+├── shared/
+│   └── feature_engineering.py   TripFeatureEngineer, OutlierHandler, build_preprocessor
+│
+├── pipeline/                    Prefect flow, 9 steps, 6 models, MLflow tracking
+│   ├── config/config.py         DataConfig (train_years), ModelConfig, MLflowConfig
+│   ├── flow.py                  trip_duration_pipeline(train_years=, sample_size=, ...)
+│   ├── main.py                  CLI entry point
+│   └── src/
+│       ├── data/                data_acquisition.py, data_preprocessing.py
+│       ├── features/            feature_engineering.py (re-exports from shared/)
+│       └── models/              model_training.py, model_registry.py
+│
+├── api/                         FastAPI online serving
+│   ├── main.py                  /health + /predict
+│   ├── model_loader.py          loads @champion + preprocessor from MLflow
+│   └── schema.py                TripRequest, PredictionResponse
+│
+├── batch/                       Batch scoring — two entry points, one core
+│   ├── core.py                  pure scoring logic
+│   ├── flow.py                  Prefect wrapper (local dev)
+│   ├── api.py                   FastAPI wrapper (Docker)
+│   └── main.py                  CLI (runs Prefect flow)
+│
+├── monitoring/
+│   └── monitor.py               reads batch_results.db → health report + drift chart
+│
+├── dashboard/
+│   └── app.py                   4 tabs: predict + batch + drift + system/retrain
+│
+└── docker-compose.yml           api + batch + dashboard
 ```
-
-Reuses Dockerfiles from:
-- `4-Deploy-Online/api/Dockerfile`   — online API
-- `5-Deploy-Offline/batch/Dockerfile` — batch API

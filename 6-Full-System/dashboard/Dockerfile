@@ -4,7 +4,7 @@ RUN pip install uv
 
 WORKDIR /app
 
-COPY 6-Full-System/dashboard/ ./dashboard/
+COPY dashboard/ ./dashboard/
 
 WORKDIR /app/dashboard
 

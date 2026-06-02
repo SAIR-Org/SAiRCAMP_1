@@ -1,0 +1,8 @@
+# Downloaded TLC parquet data (can be large — re-downloaded on each run)
+/data/
+
+# Pipeline run logs
+/logs/
+
+# Saved model artifacts (tracked via MLflow registry, not git)
+/models/
