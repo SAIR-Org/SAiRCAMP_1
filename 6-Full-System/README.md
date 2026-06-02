@@ -97,53 +97,31 @@ python main.py --sample-size 50000 --no-tune --promote
 python main.py --sample-size 500000 --tune --promote
 ```
 
-### Step 3 — Start the MLflow server + services (Docker)
+### Step 3 — Start the full system (Docker)
 
 ```bash
 cd ..   # back to 6-Full-System/
-
-# Start MLflow server first (other services depend on it)
-docker compose up mlflow -d
-# Wait ~15s for: "Uvicorn running on http://0.0.0.0:5000"
-```
-
-### Step 4 — Train the model (pointing at the server)
-
-```bash
-cd pipeline
-
-# The pipeline writes the model to the running MLflow server
-MLFLOW_TRACKING_URI=http://localhost:5000 \
-python main.py --sample-size 500000 --tune --promote
-
-# View registered model
-# http://localhost:5000  → Models → trip_duration_model
-```
-
-### Step 5 — Start all services
-
-```bash
-cd ..   # back to 6-Full-System/
-docker compose up   # api + batch + dashboard read from mlflow:5000
+docker compose up
 ```
 
 | Service | URL |
 |---------|-----|
-| MLflow UI | http://localhost:5000 |
 | Online API | http://localhost:8000/docs |
 | Batch API | http://localhost:8001/docs |
 | Dashboard | http://localhost:8501 |
 
-### Step 6 — Score batch periods
+Wait ~60s for the API to finish loading the model from MLflow.
+Watch logs: `docker compose logs -f api` — wait for "Application startup complete."
+
+### Step 4 — Score batch periods
 
 ```bash
-# Via API (background job)
+# Via API (runs in background ~2 min per period)
 curl -X POST "http://localhost:8001/score?year=2020&month=4"
 curl -X POST "http://localhost:8001/score?year=2022&month=1"
 curl -X POST "http://localhost:8001/score?year=2024&month=1"
 
 # Or locally via Prefect flow
-MLFLOW_TRACKING_URI=http://localhost:5000 \
 cd batch && python main.py
 ```
 
@@ -165,12 +143,11 @@ Open http://localhost:8501 — drift chart shows the story.
 When monitoring detects an alert (e.g., 2020-04 MAE ratio 1.81x):
 
 ```bash
-# 1. Retrain on expanded data (points at running MLflow server)
+# 1. Retrain on expanded data (local — same as initial training)
 cd pipeline
-MLFLOW_TRACKING_URI=http://localhost:5000 \
 python main.py --train-years 2019,2020 --sample-size 200000 --no-tune
 
-# 2. Restart API to load new @champion from server
+# 2. Restart API to load new @champion
 cd ..
 docker compose restart api
 
