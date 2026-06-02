@@ -16,6 +16,7 @@ Online serving + offline batch scoring + drift monitoring + unified dashboard.
 | [FASTAPI.md](FASTAPI.md) | Online vs batch serving, lifespan, Pydantic, async patterns |
 | [BATCH_DEPLOYMENT.md](BATCH_DEPLOYMENT.md) | Two-output design, async API, three-layer architecture |
 | [DRIFT_DETECTION.md](DRIFT_DETECTION.md) | MAE ratio, volume signal, why σ formula failed, COVID story |
+| [MLFLOW_SERVER.md](MLFLOW_SERVER.md) | Why SQLite broke in Docker, how the tracking server fixes it, VPS deployment |
 | [SYSTEM_INTEGRATION.md](SYSTEM_INTEGRATION.md) | Docker networking, shared state, health checks, env vars |
 | [MLOPS_LIFECYCLE.md](MLOPS_LIFECYCLE.md) | The full picture — where every tool fits across all modules |
 
@@ -96,20 +97,44 @@ python main.py --sample-size 50000 --no-tune --promote
 python main.py --sample-size 500000 --tune --promote
 ```
 
-### Step 3 — Start the full system (Docker)
+### Step 3 — Start the MLflow server + services (Docker)
 
 ```bash
 cd ..   # back to 6-Full-System/
-docker compose up
+
+# Start MLflow server first (other services depend on it)
+docker compose up mlflow -d
+# Wait ~15s for: "Uvicorn running on http://0.0.0.0:5000"
+```
+
+### Step 4 — Train the model (pointing at the server)
+
+```bash
+cd pipeline
+
+# The pipeline writes the model to the running MLflow server
+MLFLOW_TRACKING_URI=http://localhost:5000 \
+python main.py --sample-size 500000 --tune --promote
+
+# View registered model
+# http://localhost:5000  → Models → trip_duration_model
+```
+
+### Step 5 — Start all services
+
+```bash
+cd ..   # back to 6-Full-System/
+docker compose up   # api + batch + dashboard read from mlflow:5000
 ```
 
 | Service | URL |
 |---------|-----|
+| MLflow UI | http://localhost:5000 |
 | Online API | http://localhost:8000/docs |
 | Batch API | http://localhost:8001/docs |
 | Dashboard | http://localhost:8501 |
 
-### Step 4 — Score batch periods
+### Step 6 — Score batch periods
 
 ```bash
 # Via API (background job)
@@ -118,6 +143,7 @@ curl -X POST "http://localhost:8001/score?year=2022&month=1"
 curl -X POST "http://localhost:8001/score?year=2024&month=1"
 
 # Or locally via Prefect flow
+MLFLOW_TRACKING_URI=http://localhost:5000 \
 cd batch && python main.py
 ```
 
@@ -139,14 +165,12 @@ Open http://localhost:8501 — drift chart shows the story.
 When monitoring detects an alert (e.g., 2020-04 MAE ratio 1.81x):
 
 ```bash
-# 1. Retrain on expanded data
+# 1. Retrain on expanded data (points at running MLflow server)
 cd pipeline
-python main.py \
-  --train-years 2019,2020 \
-  --sample-size 200000 \
-  --no-tune
+MLFLOW_TRACKING_URI=http://localhost:5000 \
+python main.py --train-years 2019,2020 --sample-size 200000 --no-tune
 
-# 2. Restart API to serve new @champion
+# 2. Restart API to load new @champion from server
 cd ..
 docker compose restart api
 

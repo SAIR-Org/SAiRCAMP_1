@@ -1,6 +1,10 @@
 """
 Core batch scoring logic — no Prefect, no FastAPI.
 Imported by both flow.py (local/Prefect) and api.py (Docker/FastAPI).
+
+With the MLflow tracking server, model loading is straightforward:
+- MLFLOW_TRACKING_URI points to http://mlflow:5000 (Docker) or local SQLite (dev)
+- No artifact path remapping needed — the server handles it
 """
 import os
 import sys
@@ -28,18 +32,15 @@ sys.path.insert(0, str(_PIPELINE_DIR))  # src.features re-export (old pickles)
 # ── Config ────────────────────────────────────────────────────────────────────
 MLFLOW_TRACKING_URI = os.getenv(
     "MLFLOW_TRACKING_URI",
-    f"sqlite:///{_PIPELINE_DIR / 'mlflow_trip_duration.db'}",
+    f"sqlite:///{_PIPELINE_DIR / 'mlflow_trip_duration.db'}",  # local dev default
 )
 MODEL_NAME  = "trip_duration_model"
 MODEL_ALIAS = "champion"
 
-# Data paths — BATCH_DATA_DIR overrides for Docker (defaults to local batch/ dir)
+# Data paths — BATCH_DATA_DIR overrides for Docker
 DATA_DIR         = Path(os.getenv("BATCH_DATA_DIR", str(_CORE_DIR)))
 DB_PATH          = DATA_DIR / "batch_results.db"
 PREDICTIONS_DIR  = DATA_DIR / "predictions"
-
-# Artifact path remapping for Docker (see 4-Deploy-Online/docs/DOCKER_DEBUGGING.md)
-_ARTIFACTS_ROOT = os.getenv("MLFLOW_ARTIFACTS_ROOT")
 
 TLC_URL = (
     "https://d37ci6vzurychx.cloudfront.net/trip-data/"
@@ -58,35 +59,6 @@ FEATURE_COLS = [
 
 MAE_RATIO_THRESHOLD = 1.5
 VOLUME_THRESHOLD    = 500_000
-
-
-# ── MLflow artifact path remapping ───────────────────────────────────────────
-def _remap(path: str) -> str:
-    if not _ARTIFACTS_ROOT or not path:
-        return path
-    idx = path.find("/mlruns/")
-    return _ARTIFACTS_ROOT + path[idx:] if idx >= 0 else path
-
-
-def _get_storage_location(version: str) -> str:
-    db_path = MLFLOW_TRACKING_URI.replace("sqlite:///", "")
-    conn = sqlite3.connect(db_path)
-    row = conn.execute(
-        "SELECT storage_location FROM model_versions WHERE name=? AND version=?",
-        (MODEL_NAME, version),
-    ).fetchone()
-    conn.close()
-    return row[0] if row else None
-
-
-def _get_artifact_uri(run_id: str) -> str:
-    db_path = MLFLOW_TRACKING_URI.replace("sqlite:///", "")
-    conn = sqlite3.connect(db_path)
-    row = conn.execute(
-        "SELECT artifact_uri FROM runs WHERE run_uuid=?", (run_id,)
-    ).fetchone()
-    conn.close()
-    return row[0] if row else None
 
 
 # ── Database ──────────────────────────────────────────────────────────────────
@@ -119,23 +91,17 @@ def load_champion() -> dict:
     client = MlflowClient()
     mv     = client.get_model_version_by_alias(MODEL_NAME, MODEL_ALIAS)
 
-    if _ARTIFACTS_ROOT:
-        model = mlflow.sklearn.load_model(_remap(_get_storage_location(mv.version)))
-        preprocessor_path = (
-            Path(_remap(_get_artifact_uri(mv.run_id))) / "preprocessor" / "preprocessor.pkl"
-        )
-        with open(preprocessor_path, "rb") as f:
-            preprocessor = pickle.load(f)
-    else:
-        model = mlflow.sklearn.load_model(f"models:/{MODEL_NAME}@{MODEL_ALIAS}")
-        dst   = tempfile.mkdtemp()
-        art_path = mlflow.artifacts.download_artifacts(
-            run_id=mv.run_id,
-            artifact_path="preprocessor/preprocessor.pkl",
-            dst_path=dst,
-        )
-        with open(art_path, "rb") as f:
-            preprocessor = pickle.load(f)
+    # Server resolves the model URI and serves artifacts directly — no path hacks
+    model = mlflow.sklearn.load_model(f"models:/{MODEL_NAME}@{MODEL_ALIAS}")
+
+    dst      = tempfile.mkdtemp()
+    art_path = mlflow.artifacts.download_artifacts(
+        run_id=mv.run_id,
+        artifact_path="preprocessor/preprocessor.pkl",
+        dst_path=dst,
+    )
+    with open(art_path, "rb") as f:
+        preprocessor = pickle.load(f)
 
     run        = client.get_run(mv.run_id)
     train_mae  = float(run.data.metrics["test_mae"])
