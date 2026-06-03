@@ -211,17 +211,6 @@ SQLite          5     Simplicity — lightweight storage for batch results
 Parquet         5     Analytics — columnar format for per-trip predictions
 ```
 
-**Notice what's NOT here:**
-- No Kafka / streaming — batch means scheduled, not real-time
-- No Evidently / Alibi — 10-line drift detection is enough and students understand it
-- No Kubernetes — single-machine Docker is sufficient for learning the patterns
-- No Feast / feature store — not needed for this problem
-- No automatic retraining — human-in-the-loop is the right default
-
-Every excluded tool was explicitly considered and rejected because it adds
-complexity without adding teaching value at this stage.
-
----
 
 ## Part 5 — The Data Story
 
@@ -267,31 +256,6 @@ Module 6   model exists + ... + full integrated system          + Docker Compose
 The same problem (NYC taxi trip duration prediction) runs through all six modules.
 Students see how each tool integrates with what was already built.
 Nothing is thrown away. Everything compounds.
-
----
-
-## Part 7 — What Comes After This Course
-
-This course stops at Module 6. Here's what production systems add on top:
-
-```
-This course                     Production adds
-───────────────────             ──────────────────────────────
-SQLite MLflow                   MLflow tracking server + S3 artifacts
-Docker on one machine           Kubernetes / ECS for scale
-Manual retrain trigger          Scheduled retraining + CI/CD integration
-HTTP healthcheck                Prometheus + Grafana observability
-Single region                   Multi-region + failover
-Single model                    Model ensembles + A/B testing
-No authentication               API keys + rate limiting
-Manual deployment               Blue/green deployment + canary releases
-```
-
-The patterns learned here — registry, aliases, health checks, batch scoring,
-drift detection, champion/challenger gates — apply directly in production.
-The infrastructure scales. The concepts stay the same.
-
----
 
 ## The One-Sentence Summary of Each Module
 
