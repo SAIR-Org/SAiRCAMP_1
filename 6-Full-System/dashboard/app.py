@@ -48,7 +48,7 @@ def load_batch_results() -> pd.DataFrame:
     conn = sqlite3.connect(BATCH_DB)
     df   = pd.read_sql("SELECT * FROM batch_results ORDER BY year, month", conn)
     conn.close()
-    df["period"] = df["year"].astype(str) + "-" + df["month"].apply(lambda m: f"{m:02d}")
+    df["period"] = df["year"].astype(str) + "-" + df["month"].astype(str).str.zfill(2)
     return df
 
 

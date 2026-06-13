@@ -1,0 +1,80 @@
+services:
+  # ─────────────────────────────────────────────────────────────
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:latest
+    container_name: mlflow-server
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 1081
+      --backend-store-uri sqlite:////mlflow/mlflow.db
+      --default-artifact-root mlflow-artifacts:/
+      --artifacts-destination /mlruns
+      --serve-artifacts
+      --uvicorn-opts "--forwarded-allow-ips=*"
+      --allowed-hosts "*"
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:1081
+    ports:
+      - "1081:1081"
+    volumes:
+      - ./mlflow:/mlflow
+      - ./mlruns:/mlruns
+  # ── Online serving (FastAPI) ────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    volumes:
+      - ./pipeline:/app/pipeline
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:1081
+    depends_on:
+      - mlflow
+    ports:
+      - "1078:1078"
+    healthcheck:
+      test: ["CMD", "python", "-c",
+        "import urllib.request; urllib.request.urlopen('http://localhost:1078/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+  # ── Offline batch scoring ───────────────────────────────────
+  batch:
+    build:
+      context: .
+      dockerfile: batch/Dockerfile
+    volumes:
+      - ./pipeline:/app/pipeline
+      - ./batch:/app/data
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:1081
+      - BATCH_DATA_DIR=/app/data
+    depends_on:
+      - mlflow
+    ports:
+      - "1079:1079"
+    healthcheck:
+      test: ["CMD", "python", "-c",
+        "import urllib.request; urllib.request.urlopen('http://localhost:1079/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+  # ── Dashboard (Streamlit) ───────────────────────────────────
+  dashboard:
+    build:
+      context: .
+      dockerfile: dashboard/Dockerfile
+    volumes:
+      - ./batch:/app/data
+    environment:
+      - ONLINE_API_URL=http://api:1078
+      - BATCH_API_URL=http://batch:1079
+      - BATCH_DATA_DIR=/app/data
+    ports:
+      - "1080:1080"
+    depends_on:
+      - api
+      - batch
