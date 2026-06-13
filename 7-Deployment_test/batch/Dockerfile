@@ -11,4 +11,4 @@ WORKDIR /app/batch
 
 RUN uv pip install --system -r requirements.txt
 
-CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "1079"]

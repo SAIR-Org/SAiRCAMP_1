@@ -10,4 +10,4 @@ WORKDIR /app/dashboard
 
 RUN uv pip install --system -r requirements.txt
 
-CMD ["streamlit", "run", "app.py", "--server.port", "8501", "--server.address", "0.0.0.0"]
+CMD ["streamlit", "run", "app.py", "--server.port", "1081", "--server.address", "0.0.0.0"]

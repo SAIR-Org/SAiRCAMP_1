@@ -36,6 +36,45 @@ The compose file in this module differs from the previous module's (local dev) i
 
 ---
 
+## ⚠️ Continuing the registry across lesson folders
+
+This repo is built progressively — each lesson's folder (`6-Full-System`, `7-Deployment`, ...) builds on the previous one's state. The MLflow registry (`./mlflow` and `./mlruns` directories) should **carry forward as a single source of truth**, not be duplicated.
+
+When moving to a new lesson folder on the VPS:
+
+```bash
+cd ~/mlops-zoomcamp
+docker compose -f <previous-folder>/docker-compose.yml down
+mv <previous-folder>/mlflow <new-folder>/mlflow
+mv <previous-folder>/mlruns <new-folder>/mlruns
+cd <new-folder>
+docker compose up -d mlflow
+```
+
+**Move, don't copy.** Copying creates two independent registries that drift apart — new training runs only update one copy, leaving the other stale. Moving keeps exactly one registry, matching the decoupled-registry pattern above: whichever `mlflow` container is currently running (and wherever its volumes point) is the canonical state for that point in the course.
+
+If you've already trained against the previous folder's MLflow and don't want to retrain, moving its data forward avoids re-running the pipeline. If you'd rather start clean in the new folder, retrain by pointing `MLFLOW_TRACKING_URI` (via the SSH tunnel) at the new folder's `mlflow` service instead.
+
+### Troubleshooting: `[error opening dir]` after `mv`
+
+After moving `mlflow/` and `mlruns/` into the new folder, `tree` (or `ls`) may show `[error opening dir]` for these directories (and `pipeline/`, `batch/predictions/`). This is usually a permissions issue — these directories were created by the Docker container (often as `root`) and the move doesn't change ownership.
+
+Check ownership:
+
+```bash
+ls -la <new-folder>/mlflow <new-folder>/mlruns <new-folder>/pipeline <new-folder>/batch/predictions
+```
+
+Fix if needed:
+
+```bash
+sudo chown -R $USER:$USER <new-folder>/mlflow <new-folder>/mlruns <new-folder>/pipeline <new-folder>/batch/predictions
+```
+
+This is cosmetic for `tree`/`ls` — confirm the actual system works by running `docker compose up --build api batch` and checking that the model loads successfully.
+
+---
+
 ## 1. Set up SSH access
 
 ### 1.1 Generate an SSH key pair on your local machine
