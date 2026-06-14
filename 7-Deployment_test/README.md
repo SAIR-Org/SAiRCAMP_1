@@ -24,11 +24,11 @@ The compose file in this module differs from the previous module's (local dev) i
 
 | | Local dev (previous module) | Semi-prod / VPS (this module) |
 |---|---|---|
-| **MLflow** | Not a separate service — `api`/`batch` read a local sqlite DB + `/mlruns` directory directly via shared volumes | Runs as its own `mlflow` service/container, exposing a tracking server over HTTP (port `1081`) |
-| **MLFLOW_TRACKING_URI** | Implicit — points at a local sqlite file via `MLFLOW_ARTIFACTS_ROOT` | Explicit — `http://mlflow:1081`, an HTTP tracking server reachable from training machines too |
+| **MLflow** | Not a separate service — `api`/`batch` read a local sqlite DB + `/mlruns` directory directly via shared volumes | Runs as its own `mlflow` service/container, exposing a tracking server over HTTP (port `<mlflow_port>`) |
+| **MLFLOW_TRACKING_URI** | Implicit — points at a local sqlite file via `MLFLOW_ARTIFACTS_ROOT` | Explicit — `http://mlflow:<mlflow_port>`, an HTTP tracking server reachable from training machines too |
 | **MLFLOW_ARTIFACTS_ROOT** | Set on `api`/`batch` (`/app/pipeline`) — artifacts read directly from a shared filesystem path | **Removed** — artifacts are fetched via the MLflow server's `mlflow-artifacts://` proxy, not direct file access |
 | **Artifact storage** | Plain local path (`/mlruns`), read by all containers via volume mounts | `--default-artifact-root mlflow-artifacts:/` + `--artifacts-destination /mlruns`, served through the tracking server's API |
-| **Security middleware** | N/A (no exposed server) | `--allowed-hosts "*"` and `--uvicorn-opts "--forwarded-allow-ips=*"` required to avoid DNS-rebinding rejections when accessed via `mlflow:1081` or through an SSH tunnel |
+| **Security middleware** | N/A (no exposed server) | `--allowed-hosts "*"` and `--uvicorn-opts "--forwarded-allow-ips=*"` required to avoid DNS-rebinding rejections when accessed via `mlflow:<mlflow_port>` or through an SSH tunnel |
 | **Training location** | Local machine, writing directly to the shared local MLflow files | Local machine **or** any remote host — as long as `MLFLOW_TRACKING_URI` points at the VPS's `mlflow` service (directly or via SSH tunnel) |
 | **Ports** | `<api_port>`, `<batch_port>`, `<dashboard_port>` only — no `<mlflow_port>` (not a separate service) | `<api_port>`, `<batch_port>`, `<dashboard_port>`, and `<mlflow_port>` — all remapped from local-dev defaults to avoid conflicts with other services on the shared VPS |
 
