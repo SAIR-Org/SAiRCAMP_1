@@ -67,7 +67,7 @@ st.set_page_config(
     layout="wide",
 )
 
-st.title("🚕 NYC Taxi — Full MLOps System")
+st.title("🚕 Taxi Trip Duration — Full MLOps System")
 st.caption(
     "Module 6 — Online + Offline  |  "
     "Online API (port 8000)  +  Batch API (port 8001)  |  "

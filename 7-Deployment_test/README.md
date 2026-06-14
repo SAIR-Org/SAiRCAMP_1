@@ -3,9 +3,12 @@
 > **Prerequisite:** You must have access to a VPS (Virtual Private Server) to deploy this application.
 >
 > - SSH key setup reference: [Medium article on SSH key-based authentication](https://medium.com/@infosecnubes/ssh-key-based-authentication-5816d6238c2)
-> - Contabo VPS initial configuration: [vps-initial-configurations](https://github.com/context-community/vps-initial-configurations)
 
 ---
+
+## Please note that the VPS is already configureed with docker and nginx ...etc , in a normal setting you have to configure the VPS yourself but here we are skipping this step to save time and focus on the deployment of the project itself.
+
+for more info look here : > - Contabo VPS initial configuration: [vps-initial-configurations](https://github.com/context-community/vps-initial-configurations)
 
 ## ⚠️ Scope of this deployment
 
@@ -35,6 +38,7 @@ The compose file in this module differs from the previous module's (local dev) i
 **Why this matters:** decoupling the registry from the filesystem is what makes it possible to train on your laptop and serve from the VPS — the previous module's setup assumed training and serving shared the same disk, which doesn't hold once they're on different machines.
 
 ---
+
 
 ## ⚠️ Continuing the registry across lesson folders
 
