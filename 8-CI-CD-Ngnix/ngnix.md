@@ -36,13 +36,13 @@ This is a problem:
 
 With nginx, users see one clean address:
 ```
-http://your-domain.com/           ← dashboard
-http://your-domain.com/api/       ← api
-http://your-domain.com/batch/     ← batch
-http://your-domain.com/mlflow/    ← mlflow
+https://your-domain.com/           ← dashboard
+https://your-domain.com/api/       ← api
+https://your-domain.com/batch/     ← batch
+https://your-domain.com/mlflow/    ← mlflow
 ```
 
-Nginx receives all requests on port 80 (standard HTTP) and routes to the right service.
+Nginx receives all requests and routes to the right service.
 Users never see the port numbers. The internal structure is invisible.
 
 ---
@@ -75,7 +75,7 @@ nginx first. Nginx decides which container handles it.
 When you first deployed the Docker Compose app, it worked locally. You hit
 `localhost:1080` and saw the dashboard. Then you added nginx and a domain — and everything broke.
 
-Three separate things broke simultaneously:
+Four separate things broke simultaneously:
 
 **1. Streamlit's WebSocket connection died**
 
@@ -99,7 +99,15 @@ and `::1` (IPv6) and tries both. Docker containers bind to `0.0.0.0` (all IPv4 i
 but not to IPv6. The IPv6 connection attempt fails, nginx gives up, and the browser
 sees a 502 Bad Gateway.
 
-All three bugs had different causes and needed different fixes.
+**4. `301` redirect changed POST to GET**
+
+The redirect blocks used `301 Moved Permanently`. When a browser follows a 301,
+it is allowed by the HTTP spec to change the method — so POST became GET.
+FastAPI received GET on a POST-only endpoint and returned `405 Method Not Allowed`.
+This only surfaced after adding HTTPS because Certbot adds its own `301` HTTP→HTTPS
+redirect, which also changed POST to GET.
+
+All four bugs had different causes and needed different fixes.
 
 ---
 
@@ -122,13 +130,17 @@ The convention: write configs in `sites-available/`, enable them by creating
 a symlink in `sites-enabled/`. In practice for a single-site server,
 you can write directly to `sites-enabled/` and it works.
 
+> **Watch out for duplicate config files.** If you create `mlops_project` and
+> `mlops_projet1` by accident, nginx loads both and the wrong one may take precedence.
+> Always verify with `sudo nginx -T | grep "configuration file"`.
+
 ---
 
 ### The `server` block — one virtual host
 
 ```nginx
 server {
-    listen 80;
+    listen 443 ssl;
     server_name mlops123.duckdns.org;
 
     location / { ... }
@@ -136,13 +148,15 @@ server {
 }
 ```
 
-`listen 80` — handle all HTTP traffic on port 80.
+`listen 443 ssl` — handle HTTPS traffic (added by Certbot).
 `server_name` — only respond to requests for this domain.
 `location` blocks — route requests to different upstreams based on URL path.
 
-If you have multiple domains on the same server (e.g., `weatherapp.duckdns.org`
-and `mlops123.duckdns.org`), each gets its own `server` block. Nginx reads
-`server_name` on each request and routes to the right block.
+If you have multiple domains on the same server, each gets its own `server` block.
+Nginx reads `server_name` on each request and routes to the right block.
+
+> **On a shared VPS**, always check that your `server_name` isn't claimed by
+> another config file. Run `sudo nginx -T | grep server_name` to see all active entries.
 
 ---
 
@@ -181,11 +195,11 @@ The `/api/` prefix is handled entirely by nginx.
 
 ---
 
-### The `location = /api` exact match — why it's needed
+### The `location = /api` exact match and `308` — why both matter
 
 ```nginx
 location = /api {
-    return 301 /api/;
+    return 308 /api/;
 }
 
 location /api/ {
@@ -194,14 +208,19 @@ location /api/ {
 ```
 
 `location = /api` matches only the exact path `/api` (no trailing slash).
-`location /api/` matches paths starting with `/api/` (with trailing slash).
+Without it, a request to `/api` falls through to `location /` (the dashboard).
 
-Without the exact match redirect, a request to `http://your-domain.com/api`
-(no slash) doesn't match `location /api/` and falls through to `location /`
-(the dashboard). The API appears unreachable from the exact URL.
+**Why `308` and not `301`:**
 
-The `301` redirect sends the browser from `/api` to `/api/` — which then
-matches the correct location block.
+| Code | Name | Method preserved |
+|---|---|---|
+| `301` | Moved Permanently | ❌ No — POST can become GET |
+| `308` | Permanent Redirect | ✅ Yes — POST stays POST |
+
+Using `301` causes `405 Method Not Allowed` on any POST endpoint (like `/api/predict`)
+because the browser switches POST to GET when following the redirect.
+`308` was created specifically to fix this — it means the same thing as `301` but
+guarantees the method is never changed.
 
 ---
 
@@ -214,13 +233,8 @@ proxy_set_header X-Forwarded-For    $proxy_add_x_forwarded_for;
 proxy_set_header X-Forwarded-Proto  $scheme;
 ```
 
-When nginx forwards a request, the upstream service (FastAPI, Streamlit) receives
-a request that appears to come from `127.0.0.1` — the nginx process. It loses
-information about the original request:
-- What was the original domain?
-- What was the client's real IP?
-- Was it HTTP or HTTPS?
-
+When nginx forwards a request, the upstream service receives a request that appears
+to come from `127.0.0.1` — losing information about the original request.
 These headers pass that information along:
 
 | Header | Value | What it tells the upstream |
@@ -228,7 +242,7 @@ These headers pass that information along:
 | `Host` | `mlops123.duckdns.org` | Original domain the client requested |
 | `X-Real-IP` | `89.123.45.67` | Client's actual IP address |
 | `X-Forwarded-For` | `89.123.45.67` | Chain of IPs (client + any proxies) |
-| `X-Forwarded-Proto` | `http` | Original protocol (http or https) |
+| `X-Forwarded-Proto` | `https` | Original protocol (http or https) |
 
 FastAPI reads `X-Forwarded-Proto` to know whether to generate `http://` or `https://`
 URLs in redirects. Without it, FastAPI might generate `http://` links when the
@@ -250,15 +264,10 @@ location / {
 }
 ```
 
-Streamlit uses WebSockets. A WebSocket starts as an HTTP/1.1 request with an
-`Upgrade: websocket` header. The server responds with `101 Switching Protocols`
-and the connection upgrades.
-
-Three things are required for this to work through nginx:
+Streamlit uses WebSockets. Three things are required for this to work through nginx:
 
 **`proxy_http_version 1.1`** — WebSocket requires HTTP/1.1. Nginx defaults to HTTP/1.0
-for upstream connections. HTTP/1.0 doesn't support the `Connection` header semantics
-needed for protocol upgrades.
+for upstream connections which doesn't support protocol upgrades.
 
 **`proxy_set_header Upgrade $http_upgrade`** — forwards the client's `Upgrade` header
 to the upstream. If the client says `Upgrade: websocket`, the upstream needs to see that.
@@ -266,10 +275,9 @@ to the upstream. If the client says `Upgrade: websocket`, the upstream needs to 
 **`proxy_set_header Connection "upgrade"`** — tells the upstream that this connection
 is requesting a protocol change. Without this, the upstream ignores the `Upgrade` header.
 
-**`proxy_read_timeout 86400`** — WebSocket connections are long-lived (hours or days).
-Nginx's default read timeout is 60 seconds — it would kill the WebSocket connection
-after one minute of no new data. `86400` = 24 hours. This keeps the Streamlit
-UI alive across long browser sessions.
+**`proxy_read_timeout 86400`** — WebSocket connections are long-lived. Nginx's default
+read timeout is 60 seconds — it would kill the Streamlit UI after one minute of no activity.
+`86400` = 24 hours.
 
 ---
 
@@ -285,33 +293,18 @@ location /mlflow/ {
 }
 ```
 
-MLflow's UI generates HTML with asset links like:
-```html
-<link href="/static/main.css" ...>
-<script src="/static/bundle.js" ...>
-```
+MLflow's UI generates HTML with asset links like `href="/static/main.css"`.
+These are absolute from the server root — the browser requests `/static/main.css`
+which nginx has no location block for → 404 → broken UI.
 
-These paths start with `/` — they're absolute from the server root.
-When the browser sees `href="/static/main.css"`, it requests `http://your-domain.com/static/main.css`.
-Nginx has no `location /static/` block → 404 → broken UI.
+`sub_filter` rewrites these paths in the HTML response before sending to the browser
+so `href="/static/main.css"` becomes `href="/mlflow/static/main.css"` — which nginx
+correctly routes to MLflow.
 
-`sub_filter` rewrites these paths in the HTML response before sending to the browser:
-```html
-<!-- Before sub_filter -->
-<link href="/static/main.css" ...>
+`sub_filter_once off` applies the replacement to all occurrences, not just the first.
 
-<!-- After sub_filter -->
-<link href="/mlflow/static/main.css" ...>
-```
-
-Now the browser requests `http://your-domain.com/mlflow/static/main.css` →
-nginx matches `location /mlflow/` → forwards to MLflow → works.
-
-`sub_filter_once off` applies the replacement to all occurrences in the response,
-not just the first.
-
-> **Note:** `sub_filter` requires the `ngx_http_sub_module`. Check with:
-> `nginx -V 2>&1 | grep sub_filter`
+> **Note:** `sub_filter` requires the `ngx_http_sub_module`.
+> Check: `nginx -V 2>&1 | grep sub_filter`
 > If missing: `sudo apt install nginx-extras`
 
 ---
@@ -327,14 +320,58 @@ proxy_pass http://127.0.0.1:1078/;
 ```
 
 On modern Linux, `localhost` resolves to both `127.0.0.1` (IPv4) and `::1` (IPv6).
-Nginx tries both. Docker containers bind ports to `0.0.0.0` — which covers all IPv4
-interfaces, including `127.0.0.1`. But they don't bind to the IPv6 loopback `::1`.
+Docker containers bind ports to `0.0.0.0` (IPv4 only) — not to `::1`.
+When nginx tries `::1:1078` and gets "Connection refused", it returns 502 Bad Gateway.
 
-When nginx tries `::1:1078` first and gets "Connection refused", it may fail entirely
-rather than falling back to `127.0.0.1`. The result is a 502 Bad Gateway.
+Using `127.0.0.1` explicitly bypasses DNS resolution. Nginx connects directly to the
+IPv4 loopback which Docker ports are always listening on.
 
-Using `127.0.0.1` explicitly bypasses DNS resolution entirely. Nginx connects directly
-to the IPv4 loopback — which Docker ports are always listening on.
+---
+
+### SSL and Certbot — adding HTTPS
+
+After the basic nginx config is working on HTTP, add SSL with one command:
+
+```bash
+sudo certbot --nginx -d your-domain.com
+```
+
+Certbot automatically:
+1. Obtains a free certificate from Let's Encrypt
+2. Adds `listen 443 ssl` and certificate paths to your config
+3. Adds an HTTP→HTTPS redirect block on port 80
+
+**The 308 trap after Certbot runs:**
+
+Certbot adds its HTTP→HTTPS redirect using `301` by default:
+```nginx
+server {
+    if ($host = your-domain.com) {
+        return 301 https://$host$request_uri;   # ← Certbot adds this
+    }
+    listen 80;
+    ...
+}
+```
+
+This `301` changes POST to GET exactly like the location redirect problem.
+After Certbot runs, always change it to `308`:
+
+```nginx
+server {
+    if ($host = your-domain.com) {
+        return 308 https://$host$request_uri;   # ← change to 308
+    }
+    listen 80;
+    ...
+}
+```
+
+Verify after every Certbot run:
+```bash
+grep "return 30" /etc/nginx/sites-enabled/mlops_project
+# should show 308, not 301
+```
 
 ---
 
@@ -344,19 +381,16 @@ to the IPv4 loopback — which Docker ports are always listening on.
 
 ```nginx
 server {
-    listen 80;
-    server_name your-domain.com;   # replace with your domain
+    server_name your-domain.com;
 
     # ────────────────────────────────────────────────────────────
     # Dashboard (Streamlit)
-    # Catch-all / — must be last in matching priority but first in file
     # Needs WebSocket headers for live UI updates
     # ────────────────────────────────────────────────────────────
     location / {
         proxy_pass http://127.0.0.1:1080;
         proxy_http_version 1.1;
 
-        # WebSocket upgrade
         proxy_set_header Upgrade    $http_upgrade;
         proxy_set_header Connection "upgrade";
 
@@ -365,16 +399,16 @@ server {
         proxy_set_header X-Forwarded-For    $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto  $scheme;
 
-        proxy_read_timeout 86400;   # keep WebSocket alive for 24h
+        proxy_read_timeout 86400;
     }
 
     # ────────────────────────────────────────────────────────────
     # Online API (FastAPI)
-    # Exact match redirect prevents /api falling through to dashboard
+    # 308 preserves POST method through redirect
     # Trailing slash on proxy_pass strips /api/ prefix before forwarding
     # ────────────────────────────────────────────────────────────
     location = /api {
-        return 301 /api/;
+        return 308 /api/;
     }
 
     location /api/ {
@@ -391,7 +425,7 @@ server {
     # Same pattern as online API
     # ────────────────────────────────────────────────────────────
     location = /batch {
-        return 301 /batch/;
+        return 308 /batch/;
     }
 
     location /batch/ {
@@ -422,30 +456,47 @@ server {
         sub_filter 'src="/'   'src="/mlflow/';
         sub_filter_once off;
     }
+
+    # Added by Certbot
+    listen 443 ssl;
+    ssl_certificate /etc/letsencrypt/live/your-domain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+}
+
+# HTTP → HTTPS redirect (added by Certbot, 308 manually changed from 301)
+server {
+    if ($host = your-domain.com) {
+        return 308 https://$host$request_uri;
+    }
+    listen 80;
+    server_name your-domain.com;
+    return 404;
 }
 ```
 
 ### The full request path for each service
 
 ```
-Browser: GET http://mlops123.duckdns.org/api/predict
+Browser: POST https://mlops123.duckdns.org/api/predict
   ↓
 DNS: mlops123.duckdns.org → 5.189.155.145
   ↓
-nginx on port 80 receives request
+nginx on port 443 receives request
   matches location /api/
   strips /api/ prefix
-  forwards: GET /predict to http://127.0.0.1:1078/
+  forwards: POST /predict to http://127.0.0.1:1078/
   ↓
 FastAPI api-server container on port 1078
-  receives GET /predict
+  receives POST /predict
   root_path="/api" → knows its public prefix
   runs prediction
-  returns {"predicted_duration_minutes": 18.74}
+  returns {"predicted_duration_minutes": 19.93}
   ↓
 nginx forwards response to browser
   ↓
-Browser receives {"predicted_duration_minutes": 18.74}
+Browser receives {"predicted_duration_minutes": 19.93}
 ```
 
 ---
@@ -457,7 +508,7 @@ Browser receives {"predicted_duration_minutes": 18.74}
 ```
 Internet
     ↓
-Nginx (port 80)           ← this layer
+Nginx (port 443 SSL)      ← this layer
     ├── /           → Streamlit  :1080
     ├── /api/       → FastAPI    :1078
     ├── /batch/     → Batch API  :1079
@@ -468,20 +519,16 @@ Docker containers on the same host
 
 Nginx is the only process that faces the internet. Everything else is internal.
 This is the correct security posture — internal services are not directly exposed.
-Only nginx talks to the outside world.
 
 ---
 
 ### What nginx is NOT doing in this setup
 
-- **Not load balancing** — one upstream per location. In production you'd have multiple
-  API replicas behind a load balancer.
-- **Not terminating SSL** — this setup is HTTP only. In production you'd add a TLS
-  certificate (Let's Encrypt / Certbot) and redirect HTTP → HTTPS.
-- **Not rate limiting** — in production you'd add `limit_req_zone` to prevent abuse.
-- **Not caching** — prediction responses are unique per request, caching wouldn't help.
+- **Not load balancing** — one upstream per location
+- **Not rate limiting** — no `limit_req_zone`
+- **Not caching** — prediction responses are unique per request
 
-These are natural next steps once the basic setup works.
+These are natural next steps for a production hardened deployment.
 
 ---
 
@@ -499,7 +546,6 @@ sudo apt install nginx-extras   # needed for sub_filter module
 
 ```bash
 sudo nano /etc/nginx/sites-enabled/mlops_project
-# paste config, replace your-domain.com
 ```
 
 ### Test and reload
@@ -510,9 +556,20 @@ sudo systemctl reload nginx      # apply changes (no downtime)
 sudo systemctl restart nginx     # full restart (brief downtime)
 ```
 
+### Add SSL
+
+```bash
+sudo certbot --nginx -d your-domain.com
+# then manually change 301 → 308 in the redirect block
+grep "return 30" /etc/nginx/sites-enabled/mlops_project
+```
+
 ### Debug
 
 ```bash
+# Check all active configs and server names
+sudo nginx -T | grep -E "server_name|configuration file"
+
 # Check nginx is running
 sudo systemctl status nginx
 
@@ -523,7 +580,7 @@ sudo tail -f /var/log/nginx/error.log
 sudo tail -f /var/log/nginx/access.log
 
 # Test a specific endpoint
-curl -v http://your-domain.com/api/health
+curl -v https://your-domain.com/api/health
 
 # Check what's listening on a port
 ss -tlnp | grep 1078
@@ -535,7 +592,10 @@ ss -tlnp | grep 1078
 |---|---|---|
 | `502 Bad Gateway` | nginx can't reach the upstream | Check container is running + use `127.0.0.1` not `localhost` |
 | `connection refused` on `::1` | IPv6 path failing | Replace `localhost` with `127.0.0.1` in `proxy_pass` |
+| `405 Method Not Allowed` on POST | `301` changes POST to GET | Use `308` in all redirect blocks including Certbot's HTTP→HTTPS block |
 | Streamlit loads blank | WebSocket not upgrading | Add `Upgrade` + `Connection` headers + `proxy_http_version 1.1` |
 | MLflow assets 404 | Asset paths missing prefix | Add `sub_filter` + `proxy_redirect` in `/mlflow/` block |
 | FastAPI docs broken | FastAPI missing `root_path` | Add `root_path=os.getenv("ROOT_PATH","")` to `FastAPI(...)` |
 | `unknown directive sub_filter` | Module not installed | `sudo apt install nginx-extras` |
+| Wrong site showing on HTTPS | Missing 443 block for your domain | Run `sudo certbot --nginx -d your-domain.com` |
+| Duplicate config conflict | Two files with same `server_name` | Run `sudo nginx -T | grep "configuration file"` and remove the duplicate |

@@ -25,8 +25,6 @@ FastAPI doesn't know it's being served behind a reverse proxy at a sub-path like
 Add `root_path=os.getenv("ROOT_PATH", "")` to the `FastAPI(...)` constructor:
 
 ```python
-
-
 app = FastAPI(
     title="NYC Taxi Trip Duration API",
     description="Predict trip duration from pickup/dropoff zone IDs (2019 TLC model)",
@@ -34,16 +32,13 @@ app = FastAPI(
     lifespan=lifespan,
     root_path=os.getenv("ROOT_PATH", ""),  # ← tells FastAPI its public prefix
 )
-``` 
-
+```
 
 ### `batch/main.py`
 
 Same change — add `root_path=os.getenv("ROOT_PATH", "")`:
 
 ```python
-
-
 app = FastAPI(
     title="NYC Taxi Batch Scoring API",
     description="Trigger batch scoring jobs and retrieve drift metrics",
@@ -69,24 +64,24 @@ Check the `docker-compose.yml` file in this repo for the exact changes.
 
 ## Part 3 — Nginx
 
-### Install Nginx (if not already configured in the VPS)
+### Install Nginx (if not already installed on the VPS)
 
 ```bash
 sudo apt update
 sudo apt install nginx
+sudo apt install nginx-extras   # required for sub_filter module
 ```
 
 ### Create the config
 
 ```bash
-sudo nano /etc/nginx/sites-enabled/PROJECT_NAME
+sudo nano /etc/nginx/sites-enabled/mlops_project
 ```
 
 Paste the following, replacing `your-domain.com` with your actual domain:
 
 ```nginx
 server {
-    listen 80;
     server_name your-domain.com;
 
     # ─────────────────────────────────────────────────────────────
@@ -111,7 +106,7 @@ server {
     # Online API (FastAPI)
     # ─────────────────────────────────────────────────────────────
     location = /api {
-        return 301 /api/;
+        return 308 /api/;    # 308 preserves POST method (301 would change POST to GET)
     }
 
     location /api/ {
@@ -127,7 +122,7 @@ server {
     # Batch API (FastAPI)
     # ─────────────────────────────────────────────────────────────
     location = /batch {
-        return 301 /batch/;
+        return 308 /batch/;  # 308 preserves POST method
     }
 
     location /batch/ {
@@ -154,10 +149,27 @@ server {
         sub_filter 'src="/'   'src="/mlflow/';
         sub_filter_once off;
     }
+
+    listen 443 ssl; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/your-domain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+}
+
+server {
+    if ($host = your-domain.com) {
+        return 308 https://$host$request_uri;  # 308 preserves POST method
+    }
+    listen 80;
+    server_name your-domain.com;
+    return 404;
 }
 ```
 
-> **Note:** `127.0.0.1` must be used instead of `localhost`. nginx resolves `localhost` to both IPv4 and IPv6 (`::1`) and fails when the IPv6 path is unreachable. Docker containers always bind to `127.0.0.1` on the host, so this is the correct address.
+> **Note:** `127.0.0.1` must be used instead of `localhost`. nginx resolves `localhost` to both IPv4 and IPv6 (`::1`) and fails when the IPv6 path is unreachable. Docker containers bind to `127.0.0.1` on the host, so this is the correct address.
+
+> **Note:** All redirects use `308` not `301`. A `301` redirect allows clients to change POST to GET when following it — which causes `405 Method Not Allowed` on prediction endpoints. `308` preserves the HTTP method through the redirect.
 
 ### Apply and test
 
@@ -173,9 +185,9 @@ nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
 nginx: configuration file /etc/nginx/nginx.conf test is successful
 ```
 
-### Start the app 
+### Start the app
 
-# Note : if case the mlflow artifacts is not there already , you need to train the model (look at 7-Deployment_test/README.md) to generate the artifacts and mlflow db before starting the app
+> **Note:** If the MLflow artifacts are not there yet, you need to train the model first (see `7-Deployment_test/README.md`) to generate the artifacts and MLflow DB before starting the app.
 
 ```bash
 docker compose up -d
@@ -190,17 +202,33 @@ curl http://your-domain.com/batch/health
 
 Open the browser at `http://your-domain.com` — the Streamlit dashboard should load.
 
+### Add SSL (HTTPS)
+
+```bash
+sudo certbot --nginx -d your-domain.com
+```
+
+Certbot will automatically update your nginx config to add the 443 block and HTTP→HTTPS redirect. After it runs, open `https://your-domain.com` — the padlock should appear.
+
+> **Important:** After Certbot runs, check that the HTTP→HTTPS redirect block uses `308` not `301`. Certbot adds `301` by default which breaks POST requests. See `ngnix.md` for details.
+
+```bash
+# verify after certbot
+grep "return 30" /etc/nginx/sites-enabled/mlops_project
+# should show 308, not 301
+```
+
 ### URL map
 
 | URL | Service |
 |---|---|
-| `http://your-domain.com/` | Streamlit dashboard |
-| `http://your-domain.com/api/health` | Online API health |
-| `http://your-domain.com/api/predict` | Prediction endpoint |
-| `http://your-domain.com/api/docs` | FastAPI Swagger UI |
-| `http://your-domain.com/batch/health` | Batch API health |
-| `http://your-domain.com/batch/docs` | Batch API Swagger UI |
-| `http://your-domain.com/mlflow/` | MLflow tracking UI |
+| `https://your-domain.com/` | Streamlit dashboard |
+| `https://your-domain.com/api/health` | Online API health |
+| `https://your-domain.com/api/predict` | Prediction endpoint |
+| `https://your-domain.com/api/docs` | FastAPI Swagger UI |
+| `https://your-domain.com/batch/health` | Batch API health |
+| `https://your-domain.com/batch/docs` | Batch API Swagger UI |
+| `https://your-domain.com/mlflow/` | MLflow tracking UI |
 
 ---
 
@@ -256,7 +284,7 @@ In your GitHub repository go to `Settings` → `Secrets and variables` → `Acti
 | `PRIVATE_KEY` | Your VPS private SSH key (see below) |
 | `HOST` | Your VPS IP address or domain |
 | `USERNAME` | Your VPS login username |
-| `PROJECT_PATH` | Full path to the project on the VPS e.g. `/home/user/Project/7-Deployment_test` |
+| `PROJECT_PATH` | Full path to the project on the VPS e.g. `/home/user/Project/8-CI-CD-Ngnix` |
 
 To get your private key from the VPS:
 
@@ -293,14 +321,3 @@ git push origin main
 ```
 
 This triggers the workflow. Go to the `Actions` tab in your GitHub repository to watch it run. On success, your changes are live within seconds.
-``` 
-
-
-### 5. To secure the domain you need to apply the ssl certificate to the domain using certbot or any other method you prefer. 
-
-
-```bash
-sudo certbot --nginx -d your-domain.com
-``` 
-
-Now look at the browser and you should see the app running with https://your-domain.com , and not secure warning is gone.
