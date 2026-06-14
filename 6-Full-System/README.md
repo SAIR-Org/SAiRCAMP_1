@@ -90,7 +90,7 @@ Without it, the model silently serves 80% worse predictions for months.
 # From repo root
 uv sync && source .venv/bin/activate
 
-cd 6-Full-System
+cd 6-Full-System/pipeline
 ```
 
 ### Step 2 — Train the model (local)
@@ -99,10 +99,10 @@ cd 6-Full-System
 cd pipeline
 
 # Quick smoke test (~5 min)
-python main.py --sample-size 50000 --no-tune --promote
+uv run main.py --sample-size 50000 --no-tune --promote
 
 # Full run (~25 min, better model)
-python main.py --sample-size 500000 --tune --promote
+uv run main.py --sample-size 500000 --tune --promote
 ```
 
 ### Step 3 — Start the full system (Docker)
@@ -153,7 +153,7 @@ When monitoring detects an alert (e.g., 2020-04 MAE ratio 1.81x):
 ```bash
 # 1. Retrain on expanded data (local — same as initial training)
 cd pipeline
-python main.py --train-years 2019,2020 --sample-size 200000 --no-tune
+uv run  main.py --train-years 2019,2020 --sample-size 200000 --no-tune
 
 # 2. Restart API to load new @champion
 cd ..

@@ -13,6 +13,7 @@ The key teaching point:
   Online API  → synchronous  → returns prediction in milliseconds
   Batch API   → async        → triggers job, returns immediately, poll for result
 """
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
@@ -21,7 +22,6 @@ from pydantic import BaseModel
 import core
 
 
-# Track in-progress jobs (in-memory — resets on restart, fine for a course)
 _running_jobs: set = set()
 
 
@@ -36,6 +36,7 @@ app = FastAPI(
     description="Trigger batch scoring jobs and retrieve drift metrics",
     version="1.0.0",
     lifespan=lifespan,
+    root_path=os.getenv("ROOT_PATH", ""),  # ← reads /batch from docker-compose env
 )
 
 
@@ -73,11 +74,6 @@ def health():
 
 @app.post("/score", response_model=ScoreResponse)
 async def trigger_score(year: int, month: int, background_tasks: BackgroundTasks):
-    """
-    Trigger batch scoring for a given period.
-    Returns immediately — scoring runs in the background (~2 min).
-    Poll GET /results/{year}/{month} to check when complete.
-    """
     key = (year, month)
 
     if key in _running_jobs:
@@ -100,13 +96,11 @@ async def trigger_score(year: int, month: int, background_tasks: BackgroundTasks
 
 @app.get("/results")
 def get_results():
-    """All scored periods with drift metrics."""
     return core.get_all_results()
 
 
 @app.get("/results/{year}/{month}")
 def get_result(year: int, month: int):
-    """Drift metrics for one period. 404 if not scored yet."""
     result = core.get_result(year, month)
     if not result:
         raise HTTPException(
@@ -121,7 +115,6 @@ def get_result(year: int, month: int):
 
 @app.get("/predictions")
 def list_predictions():
-    """List available prediction parquet files."""
     if not core.PREDICTIONS_DIR.exists():
         return []
     return [
@@ -137,5 +130,4 @@ def list_predictions():
 
 @app.get("/running")
 def get_running():
-    """Jobs currently scoring in the background."""
     return [{"year": y, "month": m} for y, m in _running_jobs]

@@ -185,7 +185,7 @@ export MLFLOW_TRACKING_URI=http://localhost:<mlflow_port>
 ```
 
 ### 4.2 Open an SSH tunnel from your local machine
-
+ 
 In a terminal on your **local machine**:
 
 ```bash
@@ -209,7 +209,7 @@ A successful response confirms the tunnel is working and MLflow is reachable.
 
 ## 5. Train locally against the remote MLflow
 
-In the same terminal where you verified the tunnel:
+In another terminal where you verified the tunnel:
 
 ```bash
 export MLFLOW_TRACKING_URI=http://localhost:<mlflow_port>

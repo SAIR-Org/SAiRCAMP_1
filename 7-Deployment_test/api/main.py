@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
@@ -17,6 +18,7 @@ app = FastAPI(
     description="Predict trip duration from pickup/dropoff zone IDs (2019 TLC model)",
     version="1.0.0",
     lifespan=lifespan,
+    root_path=os.getenv("ROOT_PATH", ""),  # ← reads /api from docker-compose env
 )
 
 
