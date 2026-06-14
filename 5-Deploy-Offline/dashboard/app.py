@@ -61,7 +61,7 @@ st.set_page_config(
     layout="wide",
 )
 
-st.title("🚕 NYC Taxi — Offline Deployment Dashboard")
+st.title("🚕 Taxi Trip Duration — Offline Deployment Dashboard")
 st.caption(
     "Module 5 — Deploy Offline  |  "
     "Batch scoring for analytics + drift monitoring  |  "

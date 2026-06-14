@@ -293,4 +293,14 @@ git push origin main
 ```
 
 This triggers the workflow. Go to the `Actions` tab in your GitHub repository to watch it run. On success, your changes are live within seconds.
-```
+``` 
+
+
+### 5. To secure the domain you need to apply the ssl certificate to the domain using certbot or any other method you prefer. 
+
+
+```bash
+sudo certbot --nginx -d your-domain.com
+``` 
+
+Now look at the browser and you should see the app running with https://your-domain.com , and not secure warning is gone.
