@@ -1,5 +1,9 @@
 # SAiRCAMP — MLOps Course
 
+
+## Testing  CI/CD Deployment 
+
+
 A hands-on, project-based MLOps course built around a single real-world problem:
 **NYC Yellow Taxi trip duration prediction**, developed progressively across 6 modules.
 
