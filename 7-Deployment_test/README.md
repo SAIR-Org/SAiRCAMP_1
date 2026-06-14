@@ -166,7 +166,7 @@ sudo ufw status
 
 ---
 
-## 3. Start MLflow on the server
+## 3. Start MLflow on the server (if not already running)
 
 The `api` and `batch` services depend on MLflow being available to load the registered model, so start it first:
 
