@@ -3,9 +3,22 @@
 **Applied MLOps — a hands-on, project-based course built around a single real-world problem:**  
 NYC Yellow Taxi trip duration prediction, developed progressively across 8 modules from a raw notebook to a live, secured, auto-deploying production system.
 
-> **Companion course:** This course runs in parallel with **DDODS (MLOps from First Principles)** —  
-> DDODS covers the theory. SAiRCAMP MLOps builds the system.  
-> Same concepts, two lenses. Take both together.
+---
+
+## 🔗 **Part of SAiR MLOps Blueprint**
+
+This repo is the **implementation track** of the SAiR MLOps module.
+
+| Resource | Link |
+|---|---|
+| **Hub Repo** | [SAIR-Org/SAiR-MLOps-Blueprint](https://github.com/SAIR-Org/SAiR-MLOps-Blueprint) |
+| **Theory Track** | [MaaS-YT/MLOps-from-the-first-principles](https://github.com/MaaS-YT/MLOps-from-the-first-principles) |
+| **YouTube Theory Playlist** | [MLOps from First Principles](https://youtube.com/playlist?list=PLVM9Nqm8zLE0&si=jtIah3TJB8PjOMgu) |
+
+**Use this repo for:** Building the end-to-end production system.
+**Use DDODS for:** Understanding the concepts, mental models, and theory behind MLOps.
+
+> 📌 **Take both tracks together** — watch the theory, then build it live.
 
 ---
 
@@ -210,7 +223,7 @@ Each module has its own docs anchoring the key ideas:
 SAiRCAMP MLOps runs in parallel with **DDODS (MLOps from First Principles)**.
 
 ```
-DDODS                                   SAiRCAMP MLOps
+DDODS (Theory)                          SAiRCAMP MLOps (Implementation)
 ──────────────────────────────          ──────────────────────────────
 Concept-first, broad coverage           Project-first, production depth
 Simple focused demos                    One real dataset (1M+ rows)
@@ -243,3 +256,22 @@ A secured, auto-deploying production MLOps system:
 
 Trained on 2019 NYC taxi data. Serving real predictions. Detecting drift.  
 Reachable from anywhere in the world at `https://your-domain.com`.
+
+---
+
+## 📚 **Where This Fits in SAIR Jr.**
+
+```
+Module 4 — Applied Deep Learning     ✅   github.com/SAIR-Org/SAIR_Jr
+Module 5 — GPT from Scratch          ✅   github.com/SAIR-Org/SAIR_Jr
+Module 6 — MLOps  ← you are here          github.com/SAIR-Org/SAiR-MLOps-Blueprint
+  ├── DDODS                         (theory, standalone repo)
+  └── SAIRCAMP                      (live builds, standalone repo) ← YOU ARE HERE
+Capstone — Real-World Impact Project      github.com/SAIR-Org/SAIR_Jr
+```
+
+---
+
+## License
+
+This project is for educational purposes. All content is provided as a companion resource to the live cohort sessions.
