@@ -1,0 +1,27 @@
+[smtp]                                                                                                                                                        
+enabled = true                                                                                                                                                
+host = smtp.gmail.com:587                                                                                                                                     
+user = silvapi1994@gmail.com                                                                                                                                  
+# If the password contains # or ; you have to wrap it with triple quotes. Ex """#password;"""                                                                 
+password = tlmy keha ibjr kbkm                                                                                                                                
+;cert_file =                                                                                                                                                  
+;key_file =                                                                                                                                                   
+skip_verify = true                                                                                                                                            
+from_address = silvapi1994@gmail.com                                                                                                                          
+from_name = MLOps API Dashboard                                                                                                                               
+# EHLO identity in SMTP dialog (defaults to instance_name)                                                                                                    
+;ehlo_identity = dashboard.example.com                                                                                                                        
+# SMTP startTLS policy (defaults to 'OpportunisticStartTLS')                                                                                                  
+;startTLS_policy = NoStartTLS                                                                                                                                 
+# Enable trace propagation in e-mail headers, using the 'traceparent', 'tracestate' and (optionally) 'baggage' fields (defaults to false)                     
+;enable_tracing = false                                                                                                                                       
+                                                                                                                                                              
+[smtp.static_headers]                                                                                                                                         
+# Include custom static headers in all outgoing emails                                                                                                        
+;Foo-Header = bar                                                                                                                                             
+;Foo = bar                                                                                                                                                    
+                                                                                                                                                              
+[emails]                                                                                                                                                      
+;welcome_email_on_sign_up = false                                                                                                                             
+;templates_pattern = emails/*.html, emails/*.txt                                                                                                              
+;content_types = text/html         
