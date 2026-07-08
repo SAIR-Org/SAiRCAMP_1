@@ -1,0 +1,83 @@
+{
+  "metrics": [
+    {
+      "id": "15e89f895b482f9b84ba7274ed18a106",
+      "metric_name": "DriftedColumnsCount(drift_share=0.5)",
+      "config": {
+        "type": "evidently:metric_v2:DriftedColumnsCount",
+        "drift_share": 0.5
+      },
+      "value": {
+        "count": 4.0,
+        "share": 0.6666666666666666
+      }
+    },
+    {
+      "id": "55ac0d3ab973e295b757b905344717f8",
+      "metric_name": "ValueDrift(column=PULocationID,method=Wasserstein distance (normed),threshold=0.1)",
+      "config": {
+        "type": "evidently:metric_v2:ValueDrift",
+        "column": "PULocationID",
+        "method": "Wasserstein distance (normed)",
+        "threshold": 0.1
+      },
+      "value": 0.052542639576697296
+    },
+    {
+      "id": "4982f3e54d389610ea57eac0b6f86a8d",
+      "metric_name": "ValueDrift(column=DOLocationID,method=Wasserstein distance (normed),threshold=0.1)",
+      "config": {
+        "type": "evidently:metric_v2:ValueDrift",
+        "column": "DOLocationID",
+        "method": "Wasserstein distance (normed)",
+        "threshold": 0.1
+      },
+      "value": 0.009860232323610583
+    },
+    {
+      "id": "32bb865e004396989318986fca20adc1",
+      "metric_name": "ValueDrift(column=trip_distance,method=Wasserstein distance (normed),threshold=0.1)",
+      "config": {
+        "type": "evidently:metric_v2:ValueDrift",
+        "column": "trip_distance",
+        "method": "Wasserstein distance (normed)",
+        "threshold": 0.1
+      },
+      "value": 0.21468823439503248
+    },
+    {
+      "id": "627ecbd85d0104676b00bedba97a4a20",
+      "metric_name": "ValueDrift(column=passenger_count,method=Wasserstein distance (normed),threshold=0.1)",
+      "config": {
+        "type": "evidently:metric_v2:ValueDrift",
+        "column": "passenger_count",
+        "method": "Wasserstein distance (normed)",
+        "threshold": 0.1
+      },
+      "value": 0.16720081825133942
+    },
+    {
+      "id": "a9c9d7eb164a642cffced3edc2837c13",
+      "metric_name": "ValueDrift(column=RatecodeID,method=Wasserstein distance (normed),threshold=0.1)",
+      "config": {
+        "type": "evidently:metric_v2:ValueDrift",
+        "column": "RatecodeID",
+        "method": "Wasserstein distance (normed)",
+        "threshold": 0.1
+      },
+      "value": 0.6198539422069389
+    },
+    {
+      "id": "e7d5973b831c86c6699add311efc0e85",
+      "metric_name": "ValueDrift(column=VendorID,method=Jensen-Shannon distance,threshold=0.1)",
+      "config": {
+        "type": "evidently:metric_v2:ValueDrift",
+        "column": "VendorID",
+        "method": "Jensen-Shannon distance",
+        "threshold": 0.1
+      },
+      "value": 0.11851626097253204
+    }
+  ],
+  "tests": []
+}

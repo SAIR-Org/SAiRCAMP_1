@@ -1,0 +1,96 @@
+{
+  "title": "📈 Business KPIs",
+  "uid": "business-kpis",
+  "tags": ["business", "kpi", "growth"],
+  "timezone": "browser",
+  "schemaVersion": 16,
+  "version": 0,
+  "refresh": "30s",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Total Predictions",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 0},
+      "targets": [{"expr": "predictions_total", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "none"}}
+    },
+    {
+      "id": 2,
+      "title": "Predictions (24h)",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 4, "x": 4, "y": 0},
+      "targets": [{
+        "expr": "sum(increase(predictions_total[24h]))",
+        "refId": "A"
+      }],
+      "fieldConfig": {"defaults": {"unit": "none"}}
+    },
+    {
+      "id": 3,
+      "title": "Avg Trip Duration",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 4, "x": 8, "y": 0},
+      "targets": [{
+        "expr": "avg_over_time(prediction_value_minutes[1h])",
+        "refId": "A"
+      }],
+      "fieldConfig": {"defaults": {"unit": "min", "decimals": 1}}
+    },
+    {
+      "id": 4,
+      "title": "7-Day Trend",
+      "type": "graph",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+      "targets": [{
+        "expr": "sum(increase(predictions_total[1h]))",
+        "legendFormat": "Predictions per hour",
+        "refId": "A"
+      }],
+      "fieldConfig": {"defaults": {"unit": "none"}}
+    },
+    {
+      "id": 5,
+      "title": "Prediction Distribution",
+      "type": "heatmap",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+      "targets": [{
+        "expr": "prediction_value_minutes",
+        "refId": "A"
+      }],
+      "fieldConfig": {"defaults": {"unit": "min"}}
+    },
+    {
+      "id": 6,
+      "title": "Peak Usage Times",
+      "type": "graph",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+      "targets": [{
+        "expr": "rate(http_requests_total{endpoint='/predict'}[1h])",
+        "legendFormat": "Requests/hour",
+        "refId": "A"
+      }],
+      "fieldConfig": {"defaults": {"unit": "reqph"}}
+    },
+    {
+      "id": 7,
+      "title": "Model Version",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+      "targets": [{"expr": "model_info", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "none"}}
+    },
+    {
+      "id": 8,
+      "title": "Hourly Predictions (Last 24h)",
+      "type": "bargauge",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+      "targets": [{
+        "expr": "sum(increase(predictions_total[1h]))",
+        "legendFormat": "Predictions",
+        "refId": "A"
+      }],
+      "fieldConfig": {"defaults": {"unit": "none"}}
+    }
+  ]
+}

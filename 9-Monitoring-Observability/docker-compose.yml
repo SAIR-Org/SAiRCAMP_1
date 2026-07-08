@@ -1,0 +1,160 @@
+services:
+  # ─────────────────────────────────────────────────────────────
+  # MLflow Tracking Server
+  # ─────────────────────────────────────────────────────────────
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:latest
+    container_name: mlflow-server
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 1081
+      --backend-store-uri sqlite:////mlflow/mlflow.db
+      --default-artifact-root mlflow-artifacts:/
+      --artifacts-destination /mlruns
+      --serve-artifacts
+      --uvicorn-opts "--forwarded-allow-ips=*"
+      --allowed-hosts "*"
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:1081
+    ports:
+      - "1081:1081"
+    volumes:
+      - ./mlflow:/mlflow
+      - ./mlruns:/mlruns
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────────────────────
+  # Prometheus Metrics Server
+  # ─────────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+
+  # ─────────────────────────────────────────────────────────────
+  # Grafana
+  # ─────────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    volumes:
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+      - GF_SMTP_ENABLED=true
+      - GF_SMTP_HOST=smtp.gmail.com:587
+      - GF_SMTP_USER=silvapi1994@gmail.com
+      - GF_SMTP_PASSWORD=tlmy keha ibjr kbkm
+      - GF_SMTP_FROM_ADDRESS=silvapi1994@gmail.com
+      - GF_SMTP_FROM_NAME=MLOps API Dashboard
+      - GF_SMTP_SKIP_VERIFY=true
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
+  # ─────────────────────────────────────────────────────────────
+  # Online Serving (FastAPI) - WITH METRICS
+  # ─────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    container_name: api-server
+    volumes:
+      - ./pipeline:/app/pipeline
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:1081
+      - ROOT_PATH=/api
+    depends_on:
+      - mlflow
+      - prometheus
+    ports:
+      - "1078:1078"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c",
+        "import urllib.request; urllib.request.urlopen('http://localhost:1078/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ─────────────────────────────────────────────────────────────
+  # Offline Batch Scoring
+  # ─────────────────────────────────────────────────────────────
+  batch:
+    build:
+      context: .
+      dockerfile: batch/Dockerfile
+    container_name: batch-server
+    volumes:
+      - ./pipeline:/app/pipeline
+      - ./batch:/app/data
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:1081
+      - BATCH_DATA_DIR=/app/data
+      - ROOT_PATH=/batch
+    depends_on:
+      - mlflow
+    ports:
+      - "1079:1079"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c",
+        "import urllib.request; urllib.request.urlopen('http://localhost:1079/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ─────────────────────────────────────────────────────────────
+  # Dashboard (Streamlit)
+  # ─────────────────────────────────────────────────────────────
+  dashboard:
+    build:
+      context: .
+      dockerfile: dashboard/Dockerfile
+    container_name: dashboard
+    volumes:
+      - ./batch:/app/data
+    environment:
+      - ONLINE_API_URL=http://api:1078
+      - BATCH_API_URL=http://batch:1079
+      - BATCH_DATA_DIR=/app/data
+      - STREAMLIT_SERVER_HEADLESS=true
+      - STREAMLIT_SERVER_ENABLE_CORS=false
+      - STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION=false
+      - STREAMLIT_SERVER_PORT=1080
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+    depends_on:
+      - api
+      - batch
+    ports:
+      - "1080:1080"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c",
+        "import urllib.request; urllib.request.urlopen('http://localhost:1080/_stcore/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  prometheus_data:
+  grafana_data:

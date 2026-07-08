@@ -1,0 +1,119 @@
+{
+  "title": "🔬 Model Performance",
+  "uid": "model-performance",
+  "tags": ["model", "ml", "performance"],
+  "timezone": "browser",
+  "schemaVersion": 16,
+  "version": 0,
+  "refresh": "30s",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Model Version",
+      "type": "stat",
+      "gridPos": {"h": 3, "w": 4, "x": 0, "y": 0},
+      "targets": [{"expr": "model_info", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "none"}}
+    },
+    {
+      "id": 2,
+      "title": "Avg Prediction (1h)",
+      "type": "stat",
+      "gridPos": {"h": 3, "w": 4, "x": 4, "y": 0},
+      "targets": [{
+        "expr": "avg_over_time(prediction_value_minutes[1h])",
+        "refId": "A"
+      }],
+      "fieldConfig": {"defaults": {"unit": "min", "decimals": 1}}
+    },
+    {
+      "id": 3,
+      "title": "Prediction Std Dev",
+      "type": "stat",
+      "gridPos": {"h": 3, "w": 4, "x": 8, "y": 0},
+      "targets": [{
+        "expr": "stddev_over_time(prediction_value_minutes[1h])",
+        "refId": "A"
+      }],
+      "fieldConfig": {"defaults": {"unit": "min", "decimals": 1}}
+    },
+    {
+      "id": 4,
+      "title": "Predictions Over Time",
+      "type": "graph",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 3},
+      "targets": [
+        {
+          "expr": "prediction_value_minutes",
+          "legendFormat": "Last Prediction",
+          "refId": "A"
+        },
+        {
+          "expr": "avg_over_time(prediction_value_minutes[5m])",
+          "legendFormat": "5-min Avg",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {"defaults": {"unit": "min"}}
+    },
+    {
+      "id": 5,
+      "title": "Prediction Latency (P95)",
+      "type": "graph",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 3},
+      "targets": [{
+        "expr": "histogram_quantile(0.95, rate(prediction_duration_seconds_bucket[1m]))",
+        "legendFormat": "P95",
+        "refId": "A"
+      }],
+      "fieldConfig": {"defaults": {"unit": "s"}}
+    },
+    {
+      "id": 6,
+      "title": "Prediction Duration Distribution",
+      "type": "graph",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 11},
+      "targets": [{
+        "expr": "sum(rate(prediction_duration_seconds_bucket[1m])) by (le)",
+        "legendFormat": "<= {{le}}s",
+        "refId": "A"
+      }],
+      "fieldConfig": {"defaults": {"unit": "reqps"}}
+    },
+    {
+      "id": 7,
+      "title": "Prediction Volume (1h)",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+      "targets": [{
+        "expr": "sum(increase(predictions_total[1h]))",
+        "refId": "A"
+      }],
+      "fieldConfig": {"defaults": {"unit": "none"}}
+    },
+    {
+      "id": 8,
+      "title": "Model Health Score",
+      "type": "gauge",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 11},
+      "targets": [{
+        "expr": "(1 - (sum(rate(http_requests_total{status=~\"5..\"}[5m])) / sum(rate(http_requests_total[5m])))) * 100",
+        "refId": "A"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": 0},
+              {"color": "yellow", "value": 90},
+              {"color": "green", "value": 95}
+            ]
+          }
+        }
+      }
+    }
+  ]
+}
