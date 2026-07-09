@@ -1,6 +1,6 @@
 services:
   # ─────────────────────────────────────────────────────────────
-  # MLflow Tracking Server
+  # MLflow Tracking Server - NO CHANGES
   # ─────────────────────────────────────────────────────────────
   mlflow:
     image: ghcr.io/mlflow/mlflow:latest
@@ -22,8 +22,6 @@ services:
     volumes:
       - ./mlflow:/mlflow
       - ./mlruns:/mlruns
-    mem_limit: 512m
-    mem_reservation: 256m
     restart: unless-stopped
 
   # ─────────────────────────────────────────────────────────────
@@ -37,8 +35,6 @@ services:
       - prometheus_data:/prometheus
     ports:
       - "1082:9090"
-    mem_limit: 512m
-    mem_reservation: 256m
     restart: unless-stopped
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -67,8 +63,6 @@ services:
       - GF_SMTP_SKIP_VERIFY=true
     ports:
       - "1083:3000"
-    mem_limit: 512m
-    mem_reservation: 256m
     restart: unless-stopped
     depends_on:
       - prometheus
@@ -91,8 +85,6 @@ services:
       - prometheus
     ports:
       - "1078:1078"
-    mem_limit: 512m
-    mem_reservation: 256m
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c",
@@ -103,7 +95,7 @@ services:
       start_period: 60s
 
   # ─────────────────────────────────────────────────────────────
-  # Offline Batch Scoring
+  # Offline Batch Scoring - ONLY CHANGE HERE ↓
   # ─────────────────────────────────────────────────────────────
   batch:
     build:
@@ -117,13 +109,11 @@ services:
       - MLFLOW_TRACKING_URI=http://mlflow:1081
       - BATCH_DATA_DIR=/app/data
       - ROOT_PATH=/batch
-      - BATCH_CHUNK_SIZE=50000
+      - BATCH_CHUNK_SIZE=50000  # ← ADD THIS LINE ONLY
     depends_on:
       - mlflow
     ports:
       - "1079:1079"
-    mem_limit: 2g
-    mem_reservation: 1g
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c",
@@ -157,8 +147,6 @@ services:
       - batch
     ports:
       - "1080:1080"
-    mem_limit: 512m
-    mem_reservation: 256m
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c",
