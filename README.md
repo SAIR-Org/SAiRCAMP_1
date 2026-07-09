@@ -77,7 +77,7 @@ Module 9   model exists + ... + monitored + observable in production
 |---|---|---|---|---|---|
 | 1 | [1-intro_and_setup](1-intro_and_setup/) | Naive → broken → fixed model | EDA, data leakage, sklearn pipelines | — | ✅ |
 | 2 | [2-Exp_tracking](2-Exp_tracking/) | MLflow tracking + model registry | Experiment comparison, runs, aliases | — | ✅ |
-| 3a | [pipline_no_perfect](3-Pipeline_and_Orchestrations/pipline_no_perfect/) | Structured pipeline | Clean code, retry logic, separation of concerns | — | ✅ |
+| 3a | [pipeline_no_prefect](3-Pipeline_and_Orchestrations/pipeline_no_prefect/) | Structured pipeline | Clean code, retry logic, separation of concerns | — | ✅ |
 | 3b | [pipeline_with_prefect](3-Pipeline_and_Orchestrations/pipeline_with_prefect/) | Orchestrated pipeline | `@task`/`@flow`, Prefect UI, retries, observability | — | ✅ |
 | 4 | [4-Deploy-Online](4-Deploy-Online/) | Online serving | FastAPI, Docker, MLflow aliases, schema migration | `8000` | ✅ |
 | 5 | [5-Deploy-Offline](5-Deploy-Offline/) | Batch scoring + drift monitoring | Async API, drift detection, MAE ratio, Streamlit | `8000` `8001` `8501` | ✅ |
@@ -107,9 +107,9 @@ Module 9     (VPS, nginx)   https://your-domain.com/
                                 /api/          → online API
                                 /batch/        → batch API
                                 /mlflow/       → MLflow UI
-                                /prometheus/   → Prometheus
-                                /grafana/      → Grafana
 ```
+
+**Note:** Prometheus and Grafana are not exposed publicly for security reasons. Access them via SSH tunnel.
 
 ---
 
@@ -213,21 +213,28 @@ The infrastructure diagram describes **where the system runs**. It shows deploym
                               ▼
                      Nginx Reverse Proxy
                               │
- ┌────────────┬────────────┬────────────┬────────────┬────────────┬────────────┐
- │            │            │            │            │            │
- ▼            ▼            ▼            ▼            ▼            ▼
-/         /api/      /batch/     /mlflow/   /prometheus/   /grafana/
- │            │            │            │            │            │
- ▼            ▼            ▼            ▼            ▼            ▼
-Streamlit   FastAPI     Batch API     MLflow     Prometheus    Grafana
- :1080       :1078        :1079         :1081        :1082        :1083
- └──────────────┬──────────────┬──────────────┬──────────────┬──────────────┘
+ ┌────────────┬────────────┬────────────┬────────────┐
+ │            │            │            │            │
+ ▼            ▼            ▼            ▼            ▼
+/         /api/      /batch/     /mlflow/   
+ │            │            │            │            
+ ▼            ▼            ▼            ▼            
+Streamlit   FastAPI     Batch API     MLflow     
+ :1080       :1078        :1079         :1081      
+ └──────────────┬──────────────┬──────────────┘
                 │
          Docker Network
                 │
         Shared Volumes
                 │
       Model Artifacts / Data
+
+────────────────────────────────────────────────────────────────────
+
+Prometheus & Grafana (SSH Tunnel Only)
+  │
+  ├── Prometheus :1082  → ssh -L 9090:localhost:1082 user@vps
+  └── Grafana    :1083  → ssh -L 3000:localhost:1083 user@vps
 
 ────────────────────────────────────────────────────────────────────
 
@@ -335,8 +342,11 @@ docker compose up -d
 # https://your-domain.com/api/docs      → online API
 # https://your-domain.com/batch/docs    → batch API
 # https://your-domain.com/mlflow/       → MLflow UI
-# https://your-domain.com/prometheus/   → Prometheus
-# https://your-domain.com/grafana/      → Grafana
+
+# Access monitoring via SSH tunnel
+ssh -L 9090:localhost:1082 -L 3000:localhost:1083 user@vps-ip
+# http://localhost:9090  → Prometheus
+# http://localhost:3000  → Grafana
 
 # CI/CD — push to main = auto-deploy
 git push origin main
@@ -364,8 +374,10 @@ Each module has its own docs anchoring the key ideas:
 | 8 | [ngnix.md](8-CI-CD-Ngnix/ngnix.md) | Reverse proxy, WebSocket, 127.0.0.1 vs localhost, 308 vs 301 |
 | 8 | [SSL.md](8-CI-CD-Ngnix/SSL.md) | Certbot, Let's Encrypt, HTTP→HTTPS, the 308 trap |
 | 8 | [CICD.md](8-CI-CD-Ngnix/CICD.md) | GitHub Actions, SSH deploy, secrets, runner lifecycle |
-| 9 | [PROMETHEUS.md](9-Monitoring-Observability/PROMETHEUS.md) | Metrics collection, PromQL, service discovery |
-| 9 | [GRAFANA.md](9-Monitoring-Observability/GRAFANA.md) | Dashboards, alerts, visualization, panels |
+| 9 | [MONITORING_CONCEPTS.md](9-Monitoring-Observability/MONITORING_CONCEPTS.md) | Mental model: what monitoring is and why |
+| 9 | [PROMETHEUS_GRAFANA.md](9-Monitoring-Observability/PROMETHEUS_GRAFANA.md) | Prometheus + Grafana setup and usage |
+| 9 | [EVIDENTLY_DRIFT.md](9-Monitoring-Observability/EVIDENTLY_DRIFT.md) | Evidently drift detection concepts |
+| 9 | [METRICS_REFERENCE.md](9-Monitoring-Observability/METRICS_REFERENCE.md) | All metrics and alert thresholds |
 
 ---
 
@@ -411,8 +423,8 @@ A secured, auto-deploying production MLOps system with full observability:
       ├── /api/           → FastAPI API           :1078
       ├── /batch/         → Batch API             :1079
       ├── /mlflow/        → MLflow UI             :1081
-      ├── /prometheus/    → Prometheus            :1082
-      └── /grafana/       → Grafana               :1083
+      ├── /prometheus/    → Prometheus            :1082  (SSH Tunnel)
+      └── /grafana/       → Grafana               :1083  (SSH Tunnel)
 ```
 
 Trained on 2019 NYC taxi data. Serving real predictions. Detecting drift.  
