@@ -128,25 +128,13 @@ Paste the public key contents into this file, save, and exit.
 ```bash
 ssh-keygen -t ed25519 -C "your_email_or_label"
 ```
+**Note :
 
-### 1.5 Configure SSH for GitHub (server-side)
-
-```bash
-nano ~/.ssh/config
-```
-
-```text
-Host <appname>
-  HostName github.com
-  User git
-  IdentityFile ~/.ssh/<app_ssh_key_file_name>
-```
-
-### 1.6 Add the server's public key as a GitHub Deploy Key
+### 1.5 Add the server's public key as a GitHub Deploy Key
 
 GitHub repo → **Settings → Deploy keys** → paste the server's public key.
 
-### 1.7 Clone the repository
+### 1.6 Clone the repository
 
 ```bash
 git clone git@github.com:username/repository.git

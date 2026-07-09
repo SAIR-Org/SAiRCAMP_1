@@ -22,6 +22,8 @@ services:
     volumes:
       - ./mlflow:/mlflow
       - ./mlruns:/mlruns
+    mem_limit: 512m
+    mem_reservation: 256m
     restart: unless-stopped
 
   # ─────────────────────────────────────────────────────────────
@@ -34,7 +36,9 @@ services:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
     ports:
-      - "9090:9090"
+      - "1082:9090"
+    mem_limit: 512m
+    mem_reservation: 256m
     restart: unless-stopped
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -62,7 +66,9 @@ services:
       - GF_SMTP_FROM_NAME=MLOps API Dashboard
       - GF_SMTP_SKIP_VERIFY=true
     ports:
-      - "3000:3000"
+      - "1083:3000"
+    mem_limit: 512m
+    mem_reservation: 256m
     restart: unless-stopped
     depends_on:
       - prometheus
@@ -85,6 +91,8 @@ services:
       - prometheus
     ports:
       - "1078:1078"
+    mem_limit: 512m
+    mem_reservation: 256m
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c",
@@ -109,10 +117,13 @@ services:
       - MLFLOW_TRACKING_URI=http://mlflow:1081
       - BATCH_DATA_DIR=/app/data
       - ROOT_PATH=/batch
+      - BATCH_CHUNK_SIZE=50000
     depends_on:
       - mlflow
     ports:
       - "1079:1079"
+    mem_limit: 2g
+    mem_reservation: 1g
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c",
@@ -146,6 +157,8 @@ services:
       - batch
     ports:
       - "1080:1080"
+    mem_limit: 512m
+    mem_reservation: 256m
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c",

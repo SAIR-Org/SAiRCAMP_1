@@ -1,7 +1,27 @@
 # SAiRCAMP MLOps
 
 **Applied MLOps — a hands-on, project-based course built around a single real-world problem:**  
-NYC Yellow Taxi trip duration prediction, developed progressively across 8 modules from a raw notebook to a live, secured, auto-deploying production system.
+NYC Yellow Taxi trip duration prediction, developed progressively across 9 modules from a raw notebook to a live, secured, auto-deploying production system with full observability.
+
+---
+
+## 📚 Table of Contents
+
+- [🔗 Part of SAiR MLOps Blueprint](#-part-of-sair-mlops-blueprint)
+- [How This Course Works](#how-this-course-works)
+- [The Full Arc](#the-full-arc)
+- [Modules](#modules)
+- [Why the Ports Change at Module 7](#why-the-ports-change-at-module-7)
+- [The Dataset](#the-dataset)
+- [The Drift Story](#the-drift-story)
+- [🏛️ System Architecture (Logical View)](#%EF%B8%8F-system-architecture-logical-view)
+- [🖥️ Infrastructure / Deployment View](#%EF%B8%8F-infrastructure--deployment-view)
+- [Quick Start by Module](#quick-start-by-module)
+- [Concept Guides by Module](#concept-guides-by-module)
+- [Companion Course — DDODS](#companion-course--ddods)
+- [What You Will Have Built by Module 9](#what-you-will-have-built-by-module-9)
+- [📚 Where This Fits in SAIR Jr](#-where-this-fits-in-sair-jr)
+- [License](#license)
 
 ---
 
@@ -15,7 +35,7 @@ This repo is the **implementation track** of the SAiR MLOps module.
 | **Theory Track** | [MaaS-YT/MLOps-from-the-first-principles](https://github.com/MaaS-YT/MLOps-from-the-first-principles) |
 | **YouTube Theory Playlist** | [MLOps from First Principles](https://youtube.com/playlist?list=PLVM9Nqm8zLE0&si=jtIah3TJB8PjOMgu) |
 
-**Use this repo for:** Building the end-to-end production system.
+**Use this repo for:** Building the end-to-end production system.  
 **Use DDODS for:** Understanding the concepts, mental models, and theory behind MLOps.
 
 > 📌 **Take both tracks together** — watch the theory, then build it live.
@@ -30,7 +50,7 @@ Each module is live-coded — you watch it being built, then run it yourself.
 **One principle: extend, never rewrite.**  
 Each module adds exactly one layer on top of what already works.
 
-The system starts as a notebook and ends as a secured, auto-deploying production service with a real domain, HTTPS, and CI/CD — the same stack used in industry.
+The system starts as a notebook and ends as a secured, auto-deploying production service with a real domain, HTTPS, CI/CD, and full observability — the same stack used in industry.
 
 ---
 
@@ -46,7 +66,6 @@ Module 5   model exists + ... + served offline + monitored
 Module 6   model exists + ... + full integrated system (local)
 Module 7   model exists + ... + running on a real VPS
 Module 8   model exists + ... + secured domain + CI/CD + HTTPS
-── coming ──────────────────────────────────────────────────────
 Module 9   model exists + ... + monitored + observable in production
 ```
 
@@ -64,7 +83,8 @@ Module 9   model exists + ... + monitored + observable in production
 | 5 | [5-Deploy-Offline](5-Deploy-Offline/) | Batch scoring + drift monitoring | Async API, drift detection, MAE ratio, Streamlit | `8000` `8001` `8501` | ✅ |
 | 6 | [6-Full-System](6-Full-System/) | Full integrated local system | Docker Compose, service networking, MLflow server | `8000` `8001` `8501` | ✅ |
 | 7 | [7-Deployment_test](7-Deployment_test/) | Running on a real VPS | SSH, firewall, remote MLflow, SSH tunnel, port mapping | `1078` `1079` `1080` `1081` | ✅ |
-| 8 | [8-CI-CD-Ngnix](8-CI-CD-Ngnix/) | Production hardening | Nginx reverse proxy, DuckDNS, SSL/Certbot, GitHub Actions CI/CD | `1078` `1079` `1080` `1081` | ✅ |
+| 8 | [8-CI-CD-Ngnix](8-CI-CD-Ngnix/) | Production hardening | Nginx, HTTPS, GitHub Actions, SSL/Certbot | `1078` `1079` `1080` `1081` | ✅ |
+| 9 | [9-Monitoring-Observability](9-Monitoring-Observability/) | Production observability | Prometheus, Grafana, metrics, alerts, dashboards | `1078` `1079` `1080` `1081` `1082` `1083` | 🔄 |
 
 ---
 
@@ -78,10 +98,17 @@ Ports are changed to avoid conflicts and the system is placed behind nginx so us
 Modules 1–6  (local)        localhost:8000 / 8001 / 8501
 Module 7     (VPS, direct)  server-ip:1078 / 1079 / 1080 / 1081
 Module 8     (VPS, nginx)   https://your-domain.com/
-                                /          → dashboard
-                                /api/      → online API
-                                /batch/    → batch API
-                                /mlflow/   → MLflow UI
+                                /              → dashboard
+                                /api/          → online API
+                                /batch/        → batch API
+                                /mlflow/       → MLflow UI
+Module 9     (VPS, nginx)   https://your-domain.com/
+                                /              → dashboard
+                                /api/          → online API
+                                /batch/        → batch API
+                                /mlflow/       → MLflow UI
+                                /prometheus/   → Prometheus
+                                /grafana/      → Grafana
 ```
 
 ---
@@ -90,7 +117,7 @@ Module 8     (VPS, nginx)   https://your-domain.com/
 
 **Modules 1–3:** NYC Yellow Taxi, January 2016. CSV with lat/lon coordinates.
 
-**Modules 4–8:** NYC TLC official data, 2019–2024. Direct parquet download, no credentials needed.  
+**Modules 4–9:** NYC TLC official data, 2019–2024. Direct parquet download, no credentials needed.  
 Zone IDs instead of lat/lon — the format change is a deliberate teaching moment about schema drift.
 
 ```
@@ -112,6 +139,109 @@ Train on 2019 → deploy → batch score by period → watch what happens:
 
 Every student lived through 2020. Zero explanation needed.  
 This is why monitoring exists — without it, the model silently serves 80% worse predictions for months.
+
+---
+
+## 🏛️ System Architecture (Logical View)
+
+The architecture diagram describes **how the MLOps platform works**. It focuses on the logical components, their responsibilities, and how data flows through the system.
+
+It intentionally hides infrastructure details such as Docker, VPSs, networking, ports, and HTTPS.
+
+```text
+┌──────────────────────────────────────────────────────────────────────────────────────────────┐
+│                     SAiRCAMP MLOps – System Architecture (Logical View)                      │
+└──────────────────────────────────────────────────────────────────────────────────────────────┘
+
+                              NYC Taxi Dataset
+                                      │
+                                      ▼
+                             Training Pipeline
+                         (Feature Engineering,
+                           Model Training)
+                                      │
+                                      ▼
+                           MLflow Tracking Server
+                         (Experiments + Registry)
+                                      │
+                           Registered Production Model
+                                      │
+                   ┌──────────────────┴──────────────────┐
+                   │                                     │
+                   ▼                                     ▼
+          Online Prediction Service             Batch Prediction Service
+             (FastAPI REST API)                  (Async FastAPI API)
+                   │                                     │
+                   ▼                                     ▼
+           Single Prediction                 Batch Scoring Job
+                   │                                     │
+                   └──────────────┬──────────────────────┘
+                                  │
+                                  ▼
+                        Drift Detection Engine
+                    (MAE Ratio + Volume Analysis)
+                                  │
+                                  ▼
+                         Streamlit Dashboard
+
+Users
+ ├────────► Dashboard
+ ├────────► Online API
+ └────────► Batch API
+```
+
+---
+
+## 🖥️ Infrastructure / Deployment View
+
+The infrastructure diagram describes **where the system runs**. It shows deployment, networking, Docker services, HTTPS, monitoring, and CI/CD.
+
+```text
+┌──────────────────────────────────────────────────────────────────────────────────────────────┐
+│                SAiRCAMP MLOps – Infrastructure / Deployment View                             │
+└──────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+                          Internet
+                              │
+                              ▼
+                        DuckDNS Domain
+                              │
+                              ▼
+                       HTTPS (443)
+                              │
+                              ▼
+                     Nginx Reverse Proxy
+                              │
+ ┌────────────┬────────────┬────────────┬────────────┬────────────┬────────────┐
+ │            │            │            │            │            │
+ ▼            ▼            ▼            ▼            ▼            ▼
+/         /api/      /batch/     /mlflow/   /prometheus/   /grafana/
+ │            │            │            │            │            │
+ ▼            ▼            ▼            ▼            ▼            ▼
+Streamlit   FastAPI     Batch API     MLflow     Prometheus    Grafana
+ :1080       :1078        :1079         :1081        :1082        :1083
+ └──────────────┬──────────────┬──────────────┬──────────────┬──────────────┘
+                │
+         Docker Network
+                │
+        Shared Volumes
+                │
+      Model Artifacts / Data
+
+────────────────────────────────────────────────────────────────────
+
+GitHub
+    │
+    ▼
+GitHub Actions
+    │
+SSH Deployment
+    │
+Ubuntu VPS
+    │
+docker compose up --build
+```
 
 ---
 
@@ -193,6 +323,25 @@ docker compose up -d
 git push origin main
 ```
 
+### Module 9 — Production Observability (Prometheus + Grafana)
+
+```bash
+# On the VPS
+cd ~/Project/9-Monitoring-Observability
+docker compose up -d
+
+# Access via domain (HTTPS)
+# https://your-domain.com/              → dashboard
+# https://your-domain.com/api/docs      → online API
+# https://your-domain.com/batch/docs    → batch API
+# https://your-domain.com/mlflow/       → MLflow UI
+# https://your-domain.com/prometheus/   → Prometheus
+# https://your-domain.com/grafana/      → Grafana
+
+# CI/CD — push to main = auto-deploy
+git push origin main
+```
+
 ---
 
 ## Concept Guides by Module
@@ -215,6 +364,8 @@ Each module has its own docs anchoring the key ideas:
 | 8 | [ngnix.md](8-CI-CD-Ngnix/ngnix.md) | Reverse proxy, WebSocket, 127.0.0.1 vs localhost, 308 vs 301 |
 | 8 | [SSL.md](8-CI-CD-Ngnix/SSL.md) | Certbot, Let's Encrypt, HTTP→HTTPS, the 308 trap |
 | 8 | [CICD.md](8-CI-CD-Ngnix/CICD.md) | GitHub Actions, SSH deploy, secrets, runner lifecycle |
+| 9 | [PROMETHEUS.md](9-Monitoring-Observability/PROMETHEUS.md) | Metrics collection, PromQL, service discovery |
+| 9 | [GRAFANA.md](9-Monitoring-Observability/GRAFANA.md) | Dashboards, alerts, visualization, panels |
 
 ---
 
@@ -236,22 +387,32 @@ Use SAiRCAMP MLOps to build something real with them.
 
 ---
 
-## What You Will Have Built by Module 8
+## What You Will Have Built by Module 9
 
 ```
-A secured, auto-deploying production MLOps system:
+A secured, auto-deploying production MLOps system with full observability:
 
-  GitHub push
-      ↓
+  GitHub Push
+      │
+      ▼
   GitHub Actions (CI/CD)
-      ↓
-  VPS: git pull + docker compose up --build
-      ↓
-  nginx (HTTPS, port 443)
-      ├── /           → Streamlit dashboard    :1080
-      ├── /api/       → FastAPI online API     :1078
-      ├── /batch/     → Batch scoring API      :1079
-      └── /mlflow/    → MLflow tracking UI     :1081
+      │
+      ▼
+  SSH Deployment
+      │
+      ▼
+  Ubuntu VPS
+      │
+  docker compose up --build
+      │
+      ▼
+  Nginx (HTTPS :443)
+      ├── /               → Streamlit Dashboard   :1080
+      ├── /api/           → FastAPI API           :1078
+      ├── /batch/         → Batch API             :1079
+      ├── /mlflow/        → MLflow UI             :1081
+      ├── /prometheus/    → Prometheus            :1082
+      └── /grafana/       → Grafana               :1083
 ```
 
 Trained on 2019 NYC taxi data. Serving real predictions. Detecting drift.  
