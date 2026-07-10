@@ -460,19 +460,6 @@ Reachable from anywhere in the world at `https://your-domain.com`.
 
 ---
 
-## 📚 Where This Fits in SAIR Jr.
-
-| Module | Name | Status | Repo |
-|---|---|---|---|
-| 4 | Applied Deep Learning | ✅ | [github.com/SAIR-Org/SAIR_Jr](https://github.com/SAIR-Org/SAIR_Jr) |
-| 5 | GPT from Scratch | ✅ | [github.com/SAIR-Org/SAIR_Jr](https://github.com/SAIR-Org/SAIR_Jr) |
-| 6 | **MLOps ← you are here** | 🔄 | [github.com/SAIR-Org/SAiR-MLOps-Blueprint](https://github.com/SAIR-Org/SAiR-MLOps-Blueprint) |
-| — | ↳ DDODS (theory, standalone repo) | | |
-| — | ↳ SAIRCAMP (live builds, standalone repo) **← YOU ARE HERE** | | |
-| Capstone | Real-World Impact Project | | [github.com/SAIR-Org/SAIR_Jr](https://github.com/SAIR-Org/SAIR_Jr) |
-
----
-
 ## 📄 License
 
 This project is for **educational purposes**. All content is provided as a companion resource to the live cohort sessions.
