@@ -1,31 +1,51 @@
 # SAiRCAMP MLOps
 
-**Applied MLOps — a hands-on, project-based course built around a single real-world problem:**  
-NYC Yellow Taxi trip duration prediction, developed progressively across 9 modules from a raw notebook to a live, secured, auto-deploying production system with full observability.
+**Applied MLOps — A Hands-On, Project-Based Course**
+
+![Status](https://img.shields.io/badge/status-complete-brightgreen.svg)
+![Modules](https://img.shields.io/badge/modules-9%2F9-blue.svg)
+![Python](https://img.shields.io/badge/python-3.12+-blue.svg)
+![Docker](https://img.shields.io/badge/docker-ready-blue.svg)
+![License](https://img.shields.io/badge/license-educational%20use-lightgrey.svg)
+
+Built around a single real-world problem — **NYC Yellow Taxi trip duration prediction** — developed progressively across 9 modules, from a raw notebook to a live, secured, auto-deploying production system with full observability.
+
+---
+
+## 🎥 Live Demo
+
+**Streamlit Dashboard** — drift reports, prediction volume, and model performance in real time.
+
+![Streamlit dashboard demo](images/dashboard.gif)
+
+**Grafana Monitoring** — operational dashboards for API latency, error rate, and traffic.
+
+![Grafana monitoring demo](images/grafana.gif)
 
 ---
 
 ## 📚 Table of Contents
 
+- [🎥 Live Demo](#-live-demo)
 - [🔗 Part of SAiR MLOps Blueprint](#-part-of-sair-mlops-blueprint)
-- [How This Course Works](#how-this-course-works)
-- [The Full Arc](#the-full-arc)
-- [Modules](#modules)
-- [Why the Ports Change at Module 7](#why-the-ports-change-at-module-7)
-- [The Dataset](#the-dataset)
-- [The Drift Story](#the-drift-story)
-- [🏛️ System Architecture (Logical View)](#%EF%B8%8F-system-architecture-logical-view)
-- [🖥️ Infrastructure / Deployment View](#%EF%B8%8F-infrastructure--deployment-view)
-- [Quick Start by Module](#quick-start-by-module)
-- [Concept Guides by Module](#concept-guides-by-module)
-- [Companion Course — DDODS](#companion-course--ddods)
-- [What You Will Have Built by Module 9](#what-you-will-have-built-by-module-9)
+- [🧭 How This Course Works](#-how-this-course-works)
+- [🗺️ The Full Arc](#️-the-full-arc)
+- [📦 Modules](#-modules)
+- [🔀 Why the Ports Change at Module 7](#-why-the-ports-change-at-module-7)
+- [🚕 The Dataset](#-the-dataset)
+- [📉 The Drift Story](#-the-drift-story)
+- [🏛️ System Architecture — Logical View](#️-system-architecture--logical-view)
+- [🖥️ Infrastructure / Deployment View](#️-infrastructure--deployment-view)
+- [🚀 Quick Start by Module](#-quick-start-by-module)
+- [📖 Concept Guides by Module](#-concept-guides-by-module)
+- [🎓 Companion Course — DDODS](#-companion-course--ddods)
+- [✅ What You Will Have Built by Module 9](#-what-you-will-have-built-by-module-9)
 - [📚 Where This Fits in SAIR Jr](#-where-this-fits-in-sair-jr)
-- [License](#license)
+- [📄 License](#-license)
 
 ---
 
-## 🔗 **Part of SAiR MLOps Blueprint**
+## 🔗 Part of SAiR MLOps Blueprint
 
 This repo is the **implementation track** of the SAiR MLOps module.
 
@@ -33,92 +53,99 @@ This repo is the **implementation track** of the SAiR MLOps module.
 |---|---|
 | **Hub Repo** | [SAIR-Org/SAiR-MLOps-Blueprint](https://github.com/SAIR-Org/SAiR-MLOps-Blueprint) |
 | **Theory Track** | [MaaS-YT/MLOps-from-the-first-principles](https://github.com/MaaS-YT/MLOps-from-the-first-principles) |
-| **YouTube Theory Playlist** | [MLOps from First Principles](https://youtube.com/playlist?list=PLVM9Nqm8zLE0&si=jtIah3TJB8PjOMgu) |
+| **YouTube Theory Playlist** | MLOps from First Principles |
 
-**Use this repo for:** Building the end-to-end production system.  
-**Use DDODS for:** Understanding the concepts, mental models, and theory behind MLOps.
-
-> 📌 **Take both tracks together** — watch the theory, then build it live.
+> **Use this repo for:** Building the end-to-end production system.
+> **Use DDODS for:** Understanding the concepts, mental models, and theory behind MLOps.
+>
+> 📌 Take both tracks together — watch the theory, then build it live.
 
 ---
 
-## How This Course Works
+## 🧭 How This Course Works
 
-Every module builds on the previous one. The codebase grows incrementally.  
-Each module is live-coded — you watch it being built, then run it yourself.
+Every module builds on the previous one. The codebase grows incrementally.
+Each module is **live-coded** — you watch it being built, then run it yourself.
 
-**One principle: extend, never rewrite.**  
-Each module adds exactly one layer on top of what already works.
+> **One principle: extend, never rewrite.**
+> Each module adds exactly one layer on top of what already works.
 
 The system starts as a notebook and ends as a secured, auto-deploying production service with a real domain, HTTPS, CI/CD, and full observability — the same stack used in industry.
 
 ---
 
-## The Full Arc
+## 🗺️ The Full Arc
 
-```
-Module 1   model exists
-Module 2   model exists + tracked
-Module 3a  model exists + tracked + structured
-Module 3b  model exists + tracked + structured + orchestrated
-Module 4   model exists + ... + served online
-Module 5   model exists + ... + served offline + monitored
-Module 6   model exists + ... + full integrated system (local)
-Module 7   model exists + ... + running on a real VPS
-Module 8   model exists + ... + secured domain + CI/CD + HTTPS
-Module 9   model exists + ... + monitored + observable in production
+```mermaid
+flowchart LR
+    M1["Module 1<br/>Model exists"] --> M2["Module 2<br/>+ tracked"]
+    M2 --> M3a["Module 3a<br/>+ structured"]
+    M3a --> M3b["Module 3b<br/>+ orchestrated"]
+    M3b --> M4["Module 4<br/>+ served online"]
+    M4 --> M5["Module 5<br/>+ served offline<br/>+ monitored"]
+    M5 --> M6["Module 6<br/>+ full integrated<br/>system, local"]
+    M6 --> M7["Module 7<br/>+ running on<br/>a real VPS"]
+    M7 --> M8["Module 8<br/>+ secured domain<br/>+ CI-CD + HTTPS"]
+    M8 --> M9["Module 9<br/>+ monitored and<br/>observable in prod"]
+
+    classDef done fill:#238636,color:#fff,stroke:#0f4b1e
+    class M1,M2,M3a,M3b,M4,M5,M6,M7,M8,M9 done
 ```
 
 ---
 
-## Modules
+## 📦 Modules
 
 | # | Folder | What's Built | Key Concepts | Ports | Status |
 |---|---|---|---|---|---|
-| 1 | [1-intro_and_setup](1-intro_and_setup/) | Naive → broken → fixed model | EDA, data leakage, sklearn pipelines | — | ✅ |
-| 2 | [2-Exp_tracking](2-Exp_tracking/) | MLflow tracking + model registry | Experiment comparison, runs, aliases | — | ✅ |
-| 3a | [pipeline_no_prefect](3-Pipeline_and_Orchestrations/pipeline_no_prefect/) | Structured pipeline | Clean code, retry logic, separation of concerns | — | ✅ |
-| 3b | [pipeline_with_prefect](3-Pipeline_and_Orchestrations/pipeline_with_prefect/) | Orchestrated pipeline | `@task`/`@flow`, Prefect UI, retries, observability | — | ✅ |
-| 4 | [4-Deploy-Online](4-Deploy-Online/) | Online serving | FastAPI, Docker, MLflow aliases, schema migration | `8000` | ✅ |
-| 5 | [5-Deploy-Offline](5-Deploy-Offline/) | Batch scoring + drift monitoring | Async API, drift detection, MAE ratio, Streamlit | `8000` `8001` `8501` | ✅ |
-| 6 | [6-Full-System](6-Full-System/) | Full integrated local system | Docker Compose, service networking, MLflow server | `8000` `8001` `8501` | ✅ |
-| 7 | [7-Deployment_test](7-Deployment_test/) | Running on a real VPS | SSH, firewall, remote MLflow, SSH tunnel, port mapping | `1078` `1079` `1080` `1081` | ✅ |
-| 8 | [8-CI-CD-Ngnix](8-CI-CD-Ngnix/) | Production hardening | Nginx, HTTPS, GitHub Actions, SSL/Certbot | `1078` `1079` `1080` `1081` | ✅ |
-| 9 | [9-Monitoring-Observability](9-Monitoring-Observability/) | Production observability | Prometheus, Grafana, metrics, alerts, dashboards | `1078` `1079` `1080` `1081` `1082` `1083` | 🔄 |
+| 1 | `1-intro_and_setup` | Naive → broken → fixed model | EDA, data leakage, sklearn pipelines | — | ✅ |
+| 2 | `2-Exp_tracking` | MLflow tracking + model registry | Experiment comparison, runs, aliases | — | ✅ |
+| 3a | `pipeline_no_prefect` | Structured pipeline | Clean code, retry logic, separation of concerns | — | ✅ |
+| 3b | `pipeline_with_prefect` | Orchestrated pipeline | `@task`/`@flow`, Prefect UI, retries, observability | — | ✅ |
+| 4 | `4-Deploy-Online` | Online serving | FastAPI, Docker, MLflow aliases, schema migration | 8000 | ✅ |
+| 5 | `5-Deploy-Offline` | Batch scoring + drift monitoring | Async API, drift detection, MAE ratio, Streamlit | 8000, 8001, 8501 | ✅ |
+| 6 | `6-Full-System` | Full integrated local system | Docker Compose, service networking, MLflow server | 8000, 8001, 8501 | ✅ |
+| 7 | `7-Deployment_test` | Running on a real VPS | SSH, firewall, remote MLflow, SSH tunnel, port mapping | 1078–1081 | ✅ |
+| 8 | `8-CI-CD-Ngnix` | Production hardening | Nginx, HTTPS, GitHub Actions, SSL/Certbot | 1078–1081 | ✅ |
+| 9 | `9-Monitoring-Observability` | Production observability | Prometheus, Grafana, metrics, alerts, dashboards | 1078–1083 | ✅ |
 
 ---
 
-## Why the Ports Change at Module 7
+## 🔀 Why the Ports Change at Module 7
 
-Modules 1–6 run locally — default ports work fine with no conflicts.  
-From Module 7 onward the system runs on a **shared VPS** alongside other services.  
-Ports are changed to avoid conflicts and the system is placed behind nginx so users only ever see a clean domain URL — not port numbers.
+Modules 1–6 run locally — default ports work fine with no conflicts.
+From Module 7 onward the system runs on a shared VPS alongside other services.
+Ports are changed to avoid conflicts, and the system is placed behind Nginx so users only ever see a clean domain URL — not port numbers.
 
+```mermaid
+flowchart TD
+    A["Modules 1-6 - Local<br/>localhost:8000 / 8001 / 8501"] --> B["Module 7 - VPS Direct<br/>server-ip:1078 / 1079 / 1080 / 1081"]
+    B --> C["Module 8 - VPS with Nginx<br/>https://your-domain.com"]
+    C --> D["Module 9 - VPS with Nginx<br/>https://your-domain.com"]
+
+    C --> C1["/ maps to dashboard"]
+    C --> C2["/api/ maps to online API"]
+    C --> C3["/batch/ maps to batch API"]
+    C --> C4["/mlflow/ maps to MLflow UI"]
+
+    classDef local fill:#1f6feb,color:#fff
+    classDef vps fill:#d29922,color:#000
+    classDef prod fill:#238636,color:#fff
+    class A local
+    class B vps
+    class C,D prod
 ```
-Modules 1–6  (local)        localhost:8000 / 8001 / 8501
-Module 7     (VPS, direct)  server-ip:1078 / 1079 / 1080 / 1081
-Module 8     (VPS, nginx)   https://your-domain.com/
-                                /              → dashboard
-                                /api/          → online API
-                                /batch/        → batch API
-                                /mlflow/       → MLflow UI
-Module 9     (VPS, nginx)   https://your-domain.com/
-                                /              → dashboard
-                                /api/          → online API
-                                /batch/        → batch API
-                                /mlflow/       → MLflow UI
-```
 
-**Note:** Prometheus and Grafana are not exposed publicly for security reasons. Access them via SSH tunnel.
+> ⚠️ Prometheus and Grafana are **not** exposed publicly for security reasons. Access them via SSH tunnel.
 
 ---
 
-## The Dataset
+## 🚕 The Dataset
 
-**Modules 1–3:** NYC Yellow Taxi, January 2016. CSV with lat/lon coordinates.
-
-**Modules 4–9:** NYC TLC official data, 2019–2024. Direct parquet download, no credentials needed.  
-Zone IDs instead of lat/lon — the format change is a deliberate teaching moment about schema drift.
+| Modules | Source | Format | Notes |
+|---|---|---|---|
+| 1–3 | NYC Yellow Taxi, January 2016 | CSV with lat/lon coordinates | Simple starting shape |
+| 4–9 | NYC TLC official data, 2019–2024 | Direct parquet download, no credentials needed | Zone IDs instead of lat/lon — a deliberate schema-drift teaching moment |
 
 ```
 https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_{year}-{month:02d}.parquet
@@ -126,135 +153,129 @@ https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_{year}-{month:02
 
 ---
 
-## The Drift Story
+## 📉 The Drift Story
 
 Train on 2019 → deploy → batch score by period → watch what happens:
 
-```
-2019:     7.7M trips/month   MAE 3.07 min  ← train here
-2020-04:   204k trips/month   MAE 5.55 min  ← COVID ⚠️  model breaks
-2022-01:  2.3M trips/month   MAE 3.00 min  ← recovery  ✅
-2024-01:  2.7M trips/month   MAE 3.18 min  ← stable    ✅
+| Period | Volume | MAE | Note |
+|---|---|---|---|
+| **2019** | 7.7M trips/month | 3.07 min | ← train here |
+| **2020-04** | 204k trips/month | 5.55 min | ← COVID ⚠️ model breaks |
+| **2022-01** | 2.3M trips/month | 3.00 min | ← recovery ✅ |
+| **2024-01** | 2.7M trips/month | 3.18 min | ← stable ✅ |
+
+```mermaid
+xychart-beta
+    title "MAE Over Time - The Drift Story"
+    x-axis ["2019 - Train", "2020-04 - COVID", "2022-01 - Recovery", "2024-01 - Stable"]
+    y-axis "MAE (minutes)" 0 --> 6
+    bar [3.07, 5.55, 3.00, 3.18]
 ```
 
-Every student lived through 2020. Zero explanation needed.  
+Every student lived through 2020. Zero explanation needed.
 This is why monitoring exists — without it, the model silently serves 80% worse predictions for months.
 
 ---
 
-## 🏛️ System Architecture (Logical View)
+## 🏛️ System Architecture — Logical View
 
-The architecture diagram describes **how the MLOps platform works**. It focuses on the logical components, their responsibilities, and how data flows through the system.
+The architecture diagram describes how the MLOps platform works. It focuses on the logical components, their responsibilities, and how data flows through the system. It intentionally hides infrastructure details such as Docker, VPSs, networking, ports, and HTTPS.
 
-It intentionally hides infrastructure details such as Docker, VPSs, networking, ports, and HTTPS.
+```mermaid
+flowchart TD
+    A["NYC Taxi Dataset"] --> B["Training Pipeline<br/>Feature Engineering + Model Training"]
+    B --> C["MLflow Tracking Server<br/>Experiments + Registry"]
+    C --> D["Registered Production Model"]
 
-```text
-┌──────────────────────────────────────────────────────────────────────────────────────────────┐
-│                     SAiRCAMP MLOps – System Architecture (Logical View)                      │
-└──────────────────────────────────────────────────────────────────────────────────────────────┘
+    D --> E["Online Prediction Service<br/>FastAPI REST API"]
+    D --> F["Batch Prediction Service<br/>Async FastAPI API"]
 
-                              NYC Taxi Dataset
-                                      │
-                                      ▼
-                             Training Pipeline
-                         (Feature Engineering,
-                           Model Training)
-                                      │
-                                      ▼
-                           MLflow Tracking Server
-                         (Experiments + Registry)
-                                      │
-                           Registered Production Model
-                                      │
-                   ┌──────────────────┴──────────────────┐
-                   │                                     │
-                   ▼                                     ▼
-          Online Prediction Service             Batch Prediction Service
-             (FastAPI REST API)                  (Async FastAPI API)
-                   │                                     │
-                   ▼                                     ▼
-           Single Prediction                 Batch Scoring Job
-                   │                                     │
-                   └──────────────┬──────────────────────┘
-                                  │
-                                  ▼
-                        Drift Detection Engine
-                    (MAE Ratio + Volume Analysis)
-                                  │
-                                  ▼
-                         Streamlit Dashboard
+    E --> G["Single Prediction"]
+    F --> H["Batch Scoring Job"]
 
-Users
- ├────────► Dashboard
- ├────────► Online API
- └────────► Batch API
+    G --> I["Drift Detection Engine<br/>MAE Ratio + Volume Analysis"]
+    H --> I
+
+    I --> J["Streamlit Dashboard"]
+
+    U["Users"] --> J
+    U --> E
+    U --> F
+
+    style A fill:#1f6feb,color:#fff
+    style C fill:#0194E2,color:#fff
+    style D fill:#238636,color:#fff
+    style I fill:#d29922,color:#000
+    style J fill:#8957e5,color:#fff
 ```
 
 ---
 
 ## 🖥️ Infrastructure / Deployment View
 
-The infrastructure diagram describes **where the system runs**. It shows deployment, networking, Docker services, HTTPS, monitoring, and CI/CD.
+The infrastructure diagram describes where the system runs. It shows deployment, networking, Docker services, HTTPS, monitoring, and CI/CD.
 
-```text
-┌──────────────────────────────────────────────────────────────────────────────────────────────┐
-│                SAiRCAMP MLOps – Infrastructure / Deployment View                             │
-└──────────────────────────────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Internet["Internet"] --> Domain["DuckDNS Domain"]
+    Domain --> HTTPS["HTTPS - Port 443"]
 
+    subgraph Edge["Edge Layer"]
+        HTTPS --> Nginx["Nginx Reverse Proxy"]
+    end
 
-                          Internet
-                              │
-                              ▼
-                        DuckDNS Domain
-                              │
-                              ▼
-                       HTTPS (443)
-                              │
-                              ▼
-                     Nginx Reverse Proxy
-                              │
- ┌────────────┬────────────┬────────────┬────────────┐
- │            │            │            │            │
- ▼            ▼            ▼            ▼            ▼
-/         /api/      /batch/     /mlflow/   
- │            │            │            │            
- ▼            ▼            ▼            ▼            
-Streamlit   FastAPI     Batch API     MLflow     
- :1080       :1078        :1079         :1081      
- └──────────────┬──────────────┬──────────────┘
-                │
-         Docker Network
-                │
-        Shared Volumes
-                │
-      Model Artifacts / Data
+    subgraph App["Application Layer - Docker Network"]
+        Nginx -->|"root path"| Streamlit["Streamlit Dashboard<br/>Port 1080"]
+        Nginx -->|"api path"| API["FastAPI Online Service<br/>Port 1078"]
+        Nginx -->|"batch path"| Batch["Batch Scoring API<br/>Port 1079"]
+        Nginx -->|"mlflow path"| MLflow["MLflow Tracking Server<br/>Port 1081"]
+    end
 
-────────────────────────────────────────────────────────────────────
+    subgraph Data["Data Layer"]
+        Streamlit --> Volumes["Shared Docker Volumes"]
+        API --> Volumes
+        Batch --> Volumes
+        MLflow --> Volumes
+        Volumes --> Artifacts["Model Artifacts and Data"]
+    end
 
-Prometheus & Grafana (SSH Tunnel Only)
-  │
-  ├── Prometheus :1082  → ssh -L 9090:localhost:1082 user@vps
-  └── Grafana    :1083  → ssh -L 3000:localhost:1083 user@vps
+    subgraph Observability["Observability Layer - SSH Tunnel Only"]
+        Prom["Prometheus<br/>Port 1082"]
+        Graf["Grafana<br/>Port 1083"]
+        API -.->|"metrics"| Prom
+        Batch -.->|"metrics"| Prom
+        Prom --> Graf
+    end
 
-────────────────────────────────────────────────────────────────────
+    subgraph Pipeline["CI-CD Pipeline"]
+        direction LR
+        GH["GitHub Repo"] --> Actions["GitHub Actions"]
+        Actions --> SSHDeploy["SSH Deployment"]
+        SSHDeploy --> VPS["Ubuntu VPS"]
+        VPS --> Compose["docker compose up --build"]
+    end
 
-GitHub
-    │
-    ▼
-GitHub Actions
-    │
-SSH Deployment
-    │
-Ubuntu VPS
-    │
-docker compose up --build
+    Compose -.->|"deploys"| App
+
+    classDef edge fill:#009639,color:#fff,stroke:#00432a,stroke-width:1px
+    classDef app fill:#2496ED,color:#fff,stroke:#0b3d5c,stroke-width:1px
+    classDef data fill:#8957e5,color:#fff,stroke:#4c2889,stroke-width:1px
+    classDef obs fill:#d29922,color:#000,stroke:#7a5a0a,stroke-width:1px
+    classDef pipeline fill:#2088FF,color:#fff,stroke:#0b4a8c,stroke-width:1px
+
+    class Nginx edge
+    class Streamlit,API,Batch,MLflow app
+    class Volumes,Artifacts data
+    class Prom,Graf obs
+    class GH,Actions,SSHDeploy,VPS,Compose pipeline
 ```
 
 ---
 
-## Quick Start by Module
+## 🚀 Quick Start by Module
 
-### Modules 1–3 — Notebooks and pipelines
+<details>
+<summary><strong>Modules 1–3 — Notebooks and pipelines</strong></summary>
 
 ```bash
 # From repo root
@@ -268,11 +289,14 @@ cd 2-Exp_tracking && jupyter notebook
 
 # Module 3b (orchestrated pipeline)
 cd 3-Pipeline_and_Orchestrations/pipeline_with_prefect
-prefect server start          # terminal 1
+prefect server start   # terminal 1
 python main.py --sample-size 50000 --no-tune   # terminal 2
 ```
 
-### Modules 4–6 — Local Docker system
+</details>
+
+<details>
+<summary><strong>Modules 4–6 — Local Docker system</strong></summary>
 
 ```bash
 cd 6-Full-System
@@ -291,7 +315,10 @@ docker compose up
 # Dashboard:   http://localhost:8501
 ```
 
-### Module 7 — VPS deployment
+</details>
+
+<details>
+<summary><strong>Module 7 — VPS deployment</strong></summary>
 
 ```bash
 # On your local machine — open SSH tunnel to remote MLflow
@@ -307,13 +334,16 @@ cd ~/Project/7-Deployment_test
 docker compose up -d
 
 # Access directly via IP
-# http://your-vps-ip:1080         → dashboard
-# http://your-vps-ip:1078/docs    → online API
-# http://your-vps-ip:1079/docs    → batch API
-# http://your-vps-ip:1081         → MLflow UI
+# http://your-vps-ip:1080     → dashboard
+# http://your-vps-ip:1078/docs → online API
+# http://your-vps-ip:1079/docs → batch API
+# http://your-vps-ip:1081      → MLflow UI
 ```
 
-### Module 8 — Production (nginx + HTTPS + CI/CD)
+</details>
+
+<details>
+<summary><strong>Module 8 — Production (Nginx + HTTPS + CI/CD)</strong></summary>
 
 ```bash
 # On the VPS
@@ -321,16 +351,19 @@ cd ~/Project/8-CI-CD-Ngnix
 docker compose up -d
 
 # Access via domain (HTTPS)
-# https://your-domain.com/          → dashboard
-# https://your-domain.com/api/docs  → online API
-# https://your-domain.com/batch/docs → batch API
-# https://your-domain.com/mlflow/   → MLflow UI
+# https://your-domain.com/            → dashboard
+# https://your-domain.com/api/docs    → online API
+# https://your-domain.com/batch/docs  → batch API
+# https://your-domain.com/mlflow/     → MLflow UI
 
 # CI/CD — push to main = auto-deploy
 git push origin main
 ```
 
-### Module 9 — Production Observability (Prometheus + Grafana)
+</details>
+
+<details>
+<summary><strong>Module 9 — Production Observability (Prometheus + Grafana)</strong></summary>
 
 ```bash
 # On the VPS
@@ -338,113 +371,108 @@ cd ~/Project/9-Monitoring-Observability
 docker compose up -d
 
 # Access via domain (HTTPS)
-# https://your-domain.com/              → dashboard
-# https://your-domain.com/api/docs      → online API
-# https://your-domain.com/batch/docs    → batch API
-# https://your-domain.com/mlflow/       → MLflow UI
+# https://your-domain.com/            → dashboard
+# https://your-domain.com/api/docs    → online API
+# https://your-domain.com/batch/docs  → batch API
+# https://your-domain.com/mlflow/     → MLflow UI
 
 # Access monitoring via SSH tunnel
 ssh -L 9090:localhost:1082 -L 3000:localhost:1083 user@vps-ip
-# http://localhost:9090  → Prometheus
-# http://localhost:3000  → Grafana
+# http://localhost:9090 → Prometheus
+# http://localhost:3000 → Grafana
 
 # CI/CD — push to main = auto-deploy
 git push origin main
 ```
 
+</details>
+
 ---
 
-## Concept Guides by Module
-
-Each module has its own docs anchoring the key ideas:
+## 📖 Concept Guides by Module
 
 | Module | Guide | Concept |
 |---|---|---|
-| 2 | [MLFLOW_QUICKSTART.md](2-Exp_tracking/MLFLOW_QUICKSTART.md) | Experiment tracking, runs, registry, aliases |
-| 3b | [PREFECT_QUICKSTART.md](3-Pipeline_and_Orchestrations/pipeline_with_prefect/PREFECT_QUICKSTART.md) | Orchestration, `@task`/`@flow`, retries, states |
-| 4 | [FASTAPI.md](4-Deploy-Online/FASTAPI.md) | Online serving, lifespan, Pydantic, health checks |
-| 4 | [DOCKER_FOR_ML.md](4-Deploy-Online/DOCKER_FOR_ML.md) | Images, containers, volumes, bind mounts |
-| 4 | [MLFLOW_REGISTRY.md](4-Deploy-Online/MLFLOW_REGISTRY.md) | Registry vs tracking, preprocessor artifact, shared code |
-| 5 | [BATCH_DEPLOYMENT.md](5-Deploy-Offline/BATCH_DEPLOYMENT.md) | Batch vs online, async API, two-output design |
-| 5 | [DRIFT_DETECTION.md](5-Deploy-Offline/DRIFT_DETECTION.md) | MAE ratio, volume signal, why σ formula fails |
-| 6 | [SYSTEM_INTEGRATION.md](6-Full-System/SYSTEM_INTEGRATION.md) | Docker networking, shared state, startup order |
-| 6 | [MLFLOW_SERVER.md](6-Full-System/MLFLOW_SERVER.md) | Why SQLite broke in Docker, tracking server solution |
-| 6 | [MLOPS_LIFECYCLE.md](6-Full-System/MLOPS_LIFECYCLE.md) | Full picture — where every tool fits |
-| 7 | [README.md](7-Deployment_test/README.md) | VPS setup, SSH tunnel, remote MLflow, port strategy |
-| 8 | [ngnix.md](8-CI-CD-Ngnix/ngnix.md) | Reverse proxy, WebSocket, 127.0.0.1 vs localhost, 308 vs 301 |
-| 8 | [SSL.md](8-CI-CD-Ngnix/SSL.md) | Certbot, Let's Encrypt, HTTP→HTTPS, the 308 trap |
-| 8 | [CICD.md](8-CI-CD-Ngnix/CICD.md) | GitHub Actions, SSH deploy, secrets, runner lifecycle |
-| 9 | [MONITORING_CONCEPTS.md](9-Monitoring-Observability/MONITORING_CONCEPTS.md) | Mental model: what monitoring is and why |
-| 9 | [PROMETHEUS_GRAFANA.md](9-Monitoring-Observability/PROMETHEUS_GRAFANA.md) | Prometheus + Grafana setup and usage |
-| 9 | [EVIDENTLY_DRIFT.md](9-Monitoring-Observability/EVIDENTLY_DRIFT.md) | Evidently drift detection concepts |
-| 9 | [METRICS_REFERENCE.md](9-Monitoring-Observability/METRICS_REFERENCE.md) | All metrics and alert thresholds |
+| 2 | `MLFLOW_QUICKSTART.md` | Experiment tracking, runs, registry, aliases |
+| 3b | `PREFECT_QUICKSTART.md` | Orchestration, `@task`/`@flow`, retries, states |
+| 4 | `FASTAPI.md` | Online serving, lifespan, Pydantic, health checks |
+| 4 | `DOCKER_FOR_ML.md` | Images, containers, volumes, bind mounts |
+| 4 | `MLFLOW_REGISTRY.md` | Registry vs tracking, preprocessor artifact, shared code |
+| 5 | `BATCH_DEPLOYMENT.md` | Batch vs online, async API, two-output design |
+| 5 | `DRIFT_DETECTION.md` | MAE ratio, volume signal, why σ formula fails |
+| 6 | `SYSTEM_INTEGRATION.md` | Docker networking, shared state, startup order |
+| 6 | `MLFLOW_SERVER.md` | Why SQLite broke in Docker, tracking server solution |
+| 6 | `MLOPS_LIFECYCLE.md` | Full picture — where every tool fits |
+| 7 | `README.md` | VPS setup, SSH tunnel, remote MLflow, port strategy |
+| 8 | `ngnix.md` | Reverse proxy, WebSocket, 127.0.0.1 vs localhost, 308 vs 301 |
+| 8 | `SSL.md` | Certbot, Let's Encrypt, HTTP→HTTPS, the 308 trap |
+| 8 | `CICD.md` | GitHub Actions, SSH deploy, secrets, runner lifecycle |
+| 9 | `MONITORING_CONCEPTS.md` | Mental model — what monitoring is and why |
+| 9 | `PROMETHEUS_GRAFANA.md` | Prometheus + Grafana setup and usage |
+| 9 | `EVIDENTLY_DRIFT.md` | Evidently drift detection concepts |
+| 9 | `METRICS_REFERENCE.md` | All metrics and alert thresholds |
 
 ---
 
-## Companion Course — DDODS
+## 🎓 Companion Course — MLOps from First Principles
 
-SAiRCAMP MLOps runs in parallel with **DDODS (MLOps from First Principles)**.
+SAiRCAMP MLOps runs in parallel with (*MLOps from First Principles*).
 
-```
-DDODS (Theory)                          SAiRCAMP MLOps (Implementation)
-──────────────────────────────          ──────────────────────────────
-Concept-first, broad coverage           Project-first, production depth
-Simple focused demos                    One real dataset (1M+ rows)
-Each tool explained in isolation        Tools layered onto a growing system
-Theory of why things work               Reality of what breaks in production
-```
+| DDODS (Theory) | SAiRCAMP MLOps (Implementation) |
+|---|---|
+| Concept-first, broad coverage | Project-first, production depth |
+| Simple focused demos | One real dataset (1M+ rows) |
+| Each tool explained in isolation | Tools layered onto a growing system |
+| Theory of why things work | Reality of what breaks in production |
 
-Use DDODS to understand the concepts deeply.  
-Use SAiRCAMP MLOps to build something real with them.
+> Use **DDODS** to understand the concepts deeply.
+> Use **SAiRCAMP MLOps** to build something real with them.
 
 ---
 
-## What You Will Have Built by Module 9
+## ✅ What You Will Have Built by Module 9
 
-```
 A secured, auto-deploying production MLOps system with full observability:
 
-  GitHub Push
-      │
-      ▼
-  GitHub Actions (CI/CD)
-      │
-      ▼
-  SSH Deployment
-      │
-      ▼
-  Ubuntu VPS
-      │
-  docker compose up --build
-      │
-      ▼
-  Nginx (HTTPS :443)
-      ├── /               → Streamlit Dashboard   :1080
-      ├── /api/           → FastAPI API           :1078
-      ├── /batch/         → Batch API             :1079
-      ├── /mlflow/        → MLflow UI             :1081
-      ├── /prometheus/    → Prometheus            :1082  (SSH Tunnel)
-      └── /grafana/       → Grafana               :1083  (SSH Tunnel)
+```mermaid
+flowchart TD
+    Push["GitHub Push"] --> Actions["GitHub Actions - CI/CD"]
+    Actions --> SSH["SSH Deployment"]
+    SSH --> VPS["Ubuntu VPS"]
+    VPS --> Compose["docker compose up --build"]
+    Compose --> Nginx["Nginx - HTTPS Port 443"]
+
+    Nginx --> Dash["Streamlit Dashboard - Port 1080"]
+    Nginx --> API["FastAPI API - Port 1078"]
+    Nginx --> Batch["Batch API - Port 1079"]
+    Nginx --> MLflow["MLflow UI - Port 1081"]
+    Nginx -.->|"SSH tunnel"| Prom["Prometheus - Port 1082"]
+    Nginx -.->|"SSH tunnel"| Graf["Grafana - Port 1083"]
+
+    style Push fill:#2088FF,color:#fff
+    style Nginx fill:#009639,color:#fff
+    style Prom fill:#d29922,color:#000
+    style Graf fill:#d29922,color:#000
 ```
 
-Trained on 2019 NYC taxi data. Serving real predictions. Detecting drift.  
+Trained on 2019 NYC taxi data. Serving real predictions. Detecting drift.
 Reachable from anywhere in the world at `https://your-domain.com`.
 
 ---
 
-## 📚 **Where This Fits in SAIR Jr.**
+## 📚 Where This Fits in SAIR Jr.
 
-```
-Module 4 — Applied Deep Learning     ✅   github.com/SAIR-Org/SAIR_Jr
-Module 5 — GPT from Scratch          ✅   github.com/SAIR-Org/SAIR_Jr
-Module 6 — MLOps  ← you are here          github.com/SAIR-Org/SAiR-MLOps-Blueprint
-  ├── DDODS                         (theory, standalone repo)
-  └── SAIRCAMP                      (live builds, standalone repo) ← YOU ARE HERE
-Capstone — Real-World Impact Project      github.com/SAIR-Org/SAIR_Jr
-```
+| Module | Name | Status | Repo |
+|---|---|---|---|
+| 4 | Applied Deep Learning | ✅ | [github.com/SAIR-Org/SAIR_Jr](https://github.com/SAIR-Org/SAIR_Jr) |
+| 5 | GPT from Scratch | ✅ | [github.com/SAIR-Org/SAIR_Jr](https://github.com/SAIR-Org/SAIR_Jr) |
+| 6 | **MLOps ← you are here** | 🔄 | [github.com/SAIR-Org/SAiR-MLOps-Blueprint](https://github.com/SAIR-Org/SAiR-MLOps-Blueprint) |
+| — | ↳ DDODS (theory, standalone repo) | | |
+| — | ↳ SAIRCAMP (live builds, standalone repo) **← YOU ARE HERE** | | |
+| Capstone | Real-World Impact Project | | [github.com/SAIR-Org/SAIR_Jr](https://github.com/SAIR-Org/SAIR_Jr) |
 
 ---
 
-## License
+## 📄 License
 
-This project is for educational purposes. All content is provided as a companion resource to the live cohort sessions.
+This project is for **educational purposes**. All content is provided as a companion resource to the live cohort sessions.

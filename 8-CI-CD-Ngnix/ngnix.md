@@ -380,7 +380,7 @@ grep "return 30" /etc/nginx/sites-enabled/mlops_project
 ### The complete nginx config — annotated
 
 ```nginx
-server {
+<server {
     server_name your-domain.com;
 
     # ────────────────────────────────────────────────────────────
@@ -473,7 +473,7 @@ server {
     listen 80;
     server_name your-domain.com;
     return 404;
-}
+}>
 ```
 
 ### The full request path for each service
