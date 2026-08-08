@@ -6,7 +6,12 @@ WORKDIR /app
 
 # shared/ lives in Module 4 — needed for preprocessor pickle to load correctly
 COPY 4-Deploy-Online/shared/ ./shared/
+
+# Batch application
 COPY 5-Deploy-Offline/batch/ ./batch/
+
+# Make /app importable so pickle can resolve `shared.*`
+ENV PYTHONPATH=/app
 
 WORKDIR /app/batch
 

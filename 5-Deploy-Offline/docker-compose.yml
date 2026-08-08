@@ -1,20 +1,29 @@
 services:
-
   batch:
     build:
       context: ../
       dockerfile: 5-Deploy-Offline/batch/Dockerfile
+
     volumes:
-      - ../4-Deploy-Online/pipeline:/app/pipeline   # MLflow registry
-      - ./batch:/app/data                           # predictions/ and batch_results.db
+      - ../4-Deploy-Online/pipeline:/app/pipeline   # MLflow registry + artifacts
+      - ./batch:/app/data                           # predictions/ + batch_results.db
+
     environment:
+      - MLFLOW_TRACKING_URI=sqlite:////app/pipeline/mlflow_trip_duration.db
       - MLFLOW_ARTIFACTS_ROOT=/app/pipeline
       - BATCH_DATA_DIR=/app/data
+
     ports:
       - "8001:8001"
+
     healthcheck:
-      test: ["CMD", "python", "-c",
-             "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -24,13 +33,17 @@ services:
     build:
       context: ../
       dockerfile: 5-Deploy-Offline/dashboard/Dockerfile
+
     volumes:
-      - ./batch:/app/data                           # reads batch_results.db and predictions/
+      - ./batch:/app/data   # reads batch_results.db and predictions/
+
     environment:
-      - BATCH_API_URL=http://batch:8001             # service-to-service inside Docker network
+      - BATCH_API_URL=http://batch:8001
       - BATCH_DATA_DIR=/app/data
+
     ports:
       - "8501:8501"
+
     depends_on:
       batch:
         condition: service_healthy
