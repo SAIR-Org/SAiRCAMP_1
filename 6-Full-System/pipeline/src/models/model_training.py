@@ -134,11 +134,27 @@ class ModelTrainer:
             mlflow.log_param('features', X_train.shape[1])
 
             signature = infer_signature(X_train, y_train_pred)
+            
+            # FIX: Trust all common sklearn and xgboost types
+            # This fixes the "untrusted types" error that occurs with:
+            # - Gradient Boosting (sklearn internal loss types)
+            # - XGBoost (xgboost core and sklearn wrapper types)
+            trusted_types = [
+                # sklearn types (for Gradient Boosting)
+                'sklearn._loss.link.IdentityLink',
+                'sklearn._loss.link.Interval', 
+                'sklearn._loss.loss.HalfSquaredError',
+                # xgboost types (for XGBoost)
+                'xgboost.core.Booster',
+                'xgboost.sklearn.XGBRegressor'
+            ]
+            
             mlflow.sklearn.log_model(
                 sk_model=model,
                 name='model',
                 signature=signature,
-                registered_model_name=self.mlflow_config.model_name
+                registered_model_name=self.mlflow_config.model_name,
+                skops_trusted_types=trusted_types
             )
 
             logger.info(f"   ✓ {model_name} — Val R²: {metrics['val_r2']:.4f}, "
@@ -218,20 +234,32 @@ class ModelTrainer:
 
             signature = infer_signature(X_train, search.predict(X_train))
 
+            # FIX: Trust both sklearn and xgboost types for tuned models too
+            trusted_types = [
+                'sklearn._loss.link.IdentityLink',
+                'sklearn._loss.link.Interval', 
+                'sklearn._loss.loss.HalfSquaredError',
+                'xgboost.core.Booster',
+                'xgboost.sklearn.XGBRegressor'
+            ]
+
             if improvement > self.mlflow_config.min_r2_improvement:
                 mlflow.sklearn.log_model(
                     sk_model=search.best_estimator_,
                     name='tuned_model',
                     signature=signature,
-                    registered_model_name=self.mlflow_config.model_name
+                    registered_model_name=self.mlflow_config.model_name,
+                    skops_trusted_types=trusted_types
                 )
                 logger.info(f"   ✓ Tuned model registered (improvement: +{improvement:.4f})")
             else:
                 mlflow.sklearn.log_model(
                     sk_model=search.best_estimator_,
                     name='tuned_model',
-                    signature=signature
+                    signature=signature,
+                    skops_trusted_types=trusted_types
                 )
+                logger.info(f"   ✓ Tuned model logged (improvement: +{improvement:.4f} below threshold)")
 
             logger.info(f"   Best CV R²: {search.best_score_:.4f}, Time: {tuning_time:.1f}s")
 
